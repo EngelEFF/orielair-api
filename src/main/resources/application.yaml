@@ -17,6 +17,17 @@ spring:
     show-sql: ${ORIELAIR_SPRING_JPA_SHOW_SQL:false}
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
+# This configuration is for spring cloud and kafka
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: 172.26.1.133:9092 # It must have the same IP address used for advertised.listeners in the config/server.properties file. The IP address must be explicit not localhost
+      bindings:
+        # StreamBridge targets this binding name explicitly!
+        vitalsRecorded-out-0:
+          destination: vital-recorded
+
 server:
   port: ${ORIELAIR_SPRING_SERVER_PORT:8082}
   servlet:

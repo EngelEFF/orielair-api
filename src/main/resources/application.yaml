@@ -15,18 +15,93 @@ spring:
       ddl-auto: update
 
     show-sql: ${ORIELAIR_SPRING_JPA_SHOW_SQL:false}
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    # Hibernate can detect PostgreSQL automatically
+    # database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+    #The database connection is closed immediately after your @Transactional service layer method finishes executing.
+    #The app releases database connections back to the connection pool much faster,
+    # allowing the app to handle significantly more concurrent users. However, it has adverse effect on LazyLoading of entities
+    open-in-view: false
 
 # This configuration is for spring cloud and kafka
   cloud:
     stream:
-      kafka:
-        binder:
-          brokers: 172.26.1.133:9092 # It must have the same IP address used for advertised.listeners in the config/server.properties file. The IP address must be explicit not localhost
+      # Applies when Spring retries creating a failed binding.
+      # Do not set this to 0 when the application should remain available:
+      # zero makes binding failure fatal during startup.
+      binding-retry-interval: 60
+
+      # Generic Spring Cloud Stream binding configuration
       bindings:
         # StreamBridge targets this binding name explicitly!
         vitalsRecorded-out-0:
           destination: vital-recorded
+          content-type: application/json
+
+          producer:
+            # Makes asynchronous send failures available on an error channel.
+            error-channel-enabled: true
+      kafka:
+        binder:
+          brokers: ${ORIELAIR_KAFKA_BROKERS:172.26.1.133:9092} # It must have the same IP address used for advertised.listeners in the config/server.properties file. The IP address must be explicit not localhost
+
+          # Automatically creates the topics and partitions the default values are true, however I want to be explicit
+          auto-create-topics: true
+          auto-add-partitions: true
+
+          # Actuator binder health check timeout, in seconds.
+          health-timeout: 3
+
+          # Used by the binder's AdminClient and common Kafka clients.
+          configuration:
+            # Bound the AdminClient metadata/provisioning operation.
+            default.api.timeout.ms: 5000
+            request.timeout.ms: 3000
+
+            # Fail connection establishment quickly.
+            socket.connection.setup.timeout.ms: 2000
+            socket.connection.setup.timeout.max.ms: 3000
+
+            # Avoid tight reconnection attempts.
+            reconnect.backoff.ms: 1000
+            reconnect.backoff.max.ms: 3000
+
+            # Kafka 4.x defaults to "rebootstrap".
+            # "none" makes the current operation fail rather than repeatedly
+            # re-bootstrap against the same unreachable address.
+            metadata.recovery.strategy: none
+
+          # Applied specifically to Kafka producers.
+          producer-properties:
+            # Maximum time send() may block while waiting for topic metadata.
+            max.block.ms: 5000
+
+            # Upper bound for delivering a record.
+            delivery.timeout.ms: 5000
+            request.timeout.ms: 3000
+
+            retry.backoff.ms: 1000
+            retry.backoff.max.ms: 2000
+
+            reconnect.backoff.ms: 1000
+            reconnect.backoff.max.ms: 3000
+
+            metadata.recovery.strategy: none
+
+        # Kafka-specific properties for this output binding.
+        bindings:
+          vitalsRecorded-out-0:
+            producer:
+              # StreamBridge waits for Kafka acknowledgement/failure.
+              # The exception can therefore be handled by your service.
+              sync: true
+
+              # Slightly longer than delivery.timeout.ms so the real Kafka
+              # failure can propagate instead of Spring timing out first.
+              send-timeout-expression: "6000"
+
+              close-timeout: 5
+
 
 server:
   port: ${ORIELAIR_SPRING_SERVER_PORT:8082}
@@ -34,3 +109,10 @@ server:
     context-path: /api
 
 debug: ${ORIELAIR_SPRING_DEBUG:false}
+
+logging:
+  level:
+    # These levels reduce Kafka connection-log flooding.
+    # They do not replace the timeout configuration above.
+    org.apache.kafka.clients.NetworkClient: ERROR
+    org.apache.kafka.clients.admin.internals.AdminMetadataManager: WARN

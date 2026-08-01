@@ -25,6 +25,9 @@ spring:
 
 # This configuration is for spring cloud and kafka
   cloud:
+    function:
+      # Spring automatically finds these beans regardless of which package they live in!
+      definition: computeFeatures; generatePrediction; generateExplainability; generateRecommendation; dispatchAlert;
     stream:
       # Applies when Spring retries creating a failed binding.
       # Do not set this to 0 when the application should remain available:
@@ -37,10 +40,61 @@ spring:
         vitalsRecorded-out-0:
           destination: vital-recorded
           content-type: application/json
-
           producer:
             # Makes asynchronous send failures available on an error channel.
             error-channel-enabled: true
+
+        # Bind the INPUT parameter of computeFeatures to Kafka
+        computeFeatures-in-0:
+          destination: vital-recorded
+          group: features-group
+
+        # Bind the OUTPUT return value of computeFeatures to Kafka
+        computeFeatures-out-0:
+          destination: feature-computed
+          content-type: application/json
+
+        # Bind the INPUT parameter of generatePrediction to Kafka
+        generatePrediction-in-0:
+          destination: feature-computed
+          group: prediction-group
+
+        # Bind the OUTPUT return value of the generatePrediction to Kafka
+        generatePrediction-out-0:
+          destination: generated-prediction
+          content-type: application/json
+
+        # Bind the INPUT parameter of generateExplainability to Kafka
+        generateExplainability-in-0:
+          destination: generated-prediction
+          group: explainability-group
+
+        # Bind the OUTPUT return value of the generateExplainability to Kafka
+        generateExplainability-out-0:
+          destination: generated-explainability
+          content-type: application/json
+
+        # Bind the INPUT parameter of generateRecommendation to Kafka
+        generateRecommendation-in-0:
+          destination: generated-prediction
+          group: recommendation-group
+
+        # Bind the OUTPUT return value of the generateRecommendation to kafka
+        generateRecommendation-out-0:
+          destination: generated-recommendation
+          content-type: application/json
+
+        # Bind the INPUT parameter of dispatchAlert to Kafka
+        dispatchAlert-in-0:
+          destination: generated-prediction
+          group: alert-group
+
+        # Bind the OUTPUT parameter of dispatchAlert to kafka
+        dispatchAlert-out-0:
+          destination: dispatched-alert
+          content-type: application/json
+
+
       kafka:
         binder:
           brokers: ${ORIELAIR_KAFKA_BROKERS:172.26.1.133:9092} # It must have the same IP address used for advertised.listeners in the config/server.properties file. The IP address must be explicit not localhost

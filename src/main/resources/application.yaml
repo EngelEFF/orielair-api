@@ -27,7 +27,7 @@ spring:
   cloud:
     function:
       # Spring automatically finds these beans regardless of which package they live in!
-      definition: computeFeatures; generatePrediction; generateExplainability; generateRecommendation; dispatchAlert;
+      definition: computeFeatures; generatePrediction; generateExplainability; generateRecommendation; dispatchAlert; captureVital; captureFeature; capturePrediction; captureExplainability; captureRecommendation; captureAlert;
     stream:
       # Applies when Spring retries creating a failed binding.
       # Do not set this to 0 when the application should remain available:
@@ -93,6 +93,37 @@ spring:
         dispatchAlert-out-0:
           destination: dispatched-alert
           content-type: application/json
+
+
+        captureVital-in-0:
+          destination: vital-recorded
+          group: timeline-vitals-group
+        # Bind the INPUT parameter of captureFeature to Kafka
+
+        # Bind the INPUT parameter of captureVital to Kafka
+        captureFeature-in-0:
+          destination: feature-computed
+          group: timeline-features-group
+
+        # Bind the INPUT parameter of capturePrediction to Kafka
+        capturePrediction-in-0:
+          destination: generated-prediction
+          group: timeline-prediction-group
+
+        # Bind the INPUT parameter of captureExplainability to Kafka
+        captureExplainability-in-0:
+          destination: generated-explainability
+          group: timeline-explainability-group
+
+        # Bind the INPUT parameter of captureRecommendation to Kafka
+        captureRecommendation-in-0:
+          destination: generated-recommendation
+          group: timeline-recommendation-group
+
+        # Bind the INPUT parameter of captureAlert to Kafka
+        captureAlert-in-0:
+          destination: dispatched-alert
+          group: timeline-alert-group
 
 
       kafka:

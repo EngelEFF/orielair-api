@@ -1,7 +1,6 @@
 package com.orielair.api.recommendation.service
 
 import com.orielair.api.shared.event.PredictionGenerated
-import com.orielair.api.shared.event.FeatureComputed
 import com.orielair.api.shared.event.RecommendationGenerated
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

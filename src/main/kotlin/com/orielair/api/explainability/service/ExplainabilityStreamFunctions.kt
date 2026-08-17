@@ -18,7 +18,7 @@ class ExplainabilityStreamFunctions {
             id = "1",
             userId = prediction.userId,
             predictionId = prediction.id,
-            explanation = "Prediction #${prediction.id} due to the rise in heart rate and respiratory over the last 48 hours",
+            explanation = "PredictionHistory #${prediction.id} due to the rise in heart rate and respiratory over the last 48 hours",
             correlationId = prediction.correlationId,
             generatedAt = Instant.now(),
             updatedAt = null,

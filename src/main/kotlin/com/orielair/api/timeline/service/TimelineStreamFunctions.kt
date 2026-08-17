@@ -39,13 +39,13 @@ class TimelineStreamFunctions{
     }
 
     /**
-     * 3. Prediction Domain
+     * 3. PredictionHistory Domain
      * Listens for ML inference prediction events (risk scores, status changes)
      * and logs state transitions onto the user's risk timeline.
      */
     @Bean
     fun capturePrediction(): (PredictionGenerated) -> Unit = { prediction ->
-        logger.info("✅ Captured Prediction Event: ${prediction.toString()} ✅")
+        logger.info("✅ Captured PredictionHistory Event: ${prediction.toString()} ✅")
     }
 
     /**

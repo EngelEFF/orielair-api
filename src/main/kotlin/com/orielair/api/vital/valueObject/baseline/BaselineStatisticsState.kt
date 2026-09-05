@@ -5,7 +5,7 @@ package com.orielair.api.vital.valueObject.baseline
  * (e.g., 7-day rolling baseline) for a specific vital sign metric.
  */
 
-data class BaselineStatistics(
+data class BaselineStatisticsState(
     // --- Parametric Measures (Exact from Moments) ---
     val mean: Double,
     val stdDev: Double,
@@ -29,5 +29,3 @@ data class BaselineStatistics(
     val samples: Long,
     //  val computedAt: Instant = Instant.now(),
 )
-
-

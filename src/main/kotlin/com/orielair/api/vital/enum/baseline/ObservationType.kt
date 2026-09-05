@@ -4,5 +4,5 @@ package com.orielair.api.vital.enum.baseline
 enum class  ObservationType {
     HEART_RATE,
     RESPIRATORY_RATE,
-    HRV_RMSSD
+    HEART_RATE_VARIABILITY
 }

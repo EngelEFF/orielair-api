@@ -8,11 +8,10 @@ import org.springframework.stereotype.Service
 class BaselineAggregatorCheckpointFlushService(
     private val registry: BaselineAggregatorRegistry,
     private val checkpointService: BaselineAggregatorCheckointService,
-    private val windowProvider: AggregationWindowProvider,
     private val repository: BaselineAggregatorCheckpointRepository
 ) {
     // Persists checkpoints in a database
-    fun flushCheckpoints(registry: BaselineAggregatorRegistry, window: AggregationWindow){
+    fun flushCheckpoints( window: AggregationWindow){
 
         // Convert the live aggregator into a persistence-ready checkpoint.
         val checkpoints = checkpointService.createCheckpoints(
@@ -22,5 +21,6 @@ class BaselineAggregatorCheckpointFlushService(
         )
         // persists the checkpoints
         repository.saveAll(checkpoints)
+
     }
 }

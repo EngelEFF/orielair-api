@@ -58,6 +58,10 @@ dependencies {
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testImplementation("org.springframework.cloud:spring-cloud-stream-test-binder")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // Specific to the baseline engine
+    //This is to help with the implementation of the algorithms which will process large scale datasets
+    implementation("org.apache.datasketches:datasketches-java:8.0.0")
 }
 
 dependencyManagement {
@@ -80,4 +84,10 @@ allOpen {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+// Specific to the baseline engine
+// This ensures the datasketch version is compatible with jdk 21
+tasks.withType<org.springframework.boot.gradle.tasks.run.BootRun> {
+    jvmArgs("--enable-preview")
 }

@@ -62,7 +62,8 @@ class BaselineAggregatorCheckpoint(
     @Column(nullable = false)
     var quantileAlgorithm: String? = null,
 
-    @Lob
-    @Column(nullable = false)
-    var quantileState: ByteArray? = null,
+    // Remove @Lob completely which caused reading problem with hibernate
+    @Column(name = "quantile_state", columnDefinition = "bytea", nullable = false)
+    var quantileState: ByteArray? = null
+
 )

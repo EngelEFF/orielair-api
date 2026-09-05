@@ -4,7 +4,7 @@ import com.orielair.api.vital.service.baseline.sketch.implementation.KLLQuantile
 import com.orielair.api.vital.valueObject.baseline.BaselineAggregatorState
 import com.orielair.api.vital.valueObject.baseline.MomentsState
 import com.orielair.api.vital.valueObject.baseline.QuantileSketchState
-import com.orielair.api.vital.valueObject.baseline.BaselineStatistics
+import com.orielair.api.vital.valueObject.baseline.BaselineStatisticsState
 import org.springframework.stereotype.Service
 
 
@@ -54,11 +54,11 @@ class BaselineAggregator private constructor(
 
     }
 
-    fun buildStatistics(): BaselineStatistics {
+    fun buildStatistics(): BaselineStatisticsState {
         val p25 = quantiles.quantile(0.25)
         val p75 = quantiles.quantile(0.75)
 
-        return BaselineStatistics(
+        return BaselineStatisticsState(
             mean = moments.mean,
             stdDev = moments.standardDeviation,
             min = moments.min,

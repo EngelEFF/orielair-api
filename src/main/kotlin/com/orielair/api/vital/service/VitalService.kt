@@ -4,6 +4,8 @@ import com.orielair.api.vital.persistence.repository.VitalRepository
 import com.orielair.api.shared.event.VitalRecorded
 import com.orielair.api.vital.persistence.entity.VitalHistory
 import com.orielair.api.vital.persistence.repository.VitalHistoryRepository
+import com.orielair.api.vital.service.baseline.BaselineIngestionService
+import com.orielair.api.vital.valueObject.baseline.BaselineObservation
 import org.springframework.cloud.stream.function.StreamBridge
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -16,7 +18,8 @@ import java.util.UUID
 class VitalService(
     private val vitalRepository: VitalRepository,
     private val streamBridge: StreamBridge,
-    private val vitalHistoryRepository: VitalHistoryRepository
+    private val vitalHistoryRepository: VitalHistoryRepository,
+    private val BaselineIngestionService: BaselineIngestionService
 ) {
 
     fun store(vital: Vital): Vital {
@@ -55,6 +58,13 @@ class VitalService(
         // "vitalsRecorded-out-0" maps directly to application.yml binding name
         streamBridge.send("vitalsRecorded-out-0", vitalRecorded)
         return vitalRecorded
+    }
+
+
+    // Test baseline ingestion logic
+    fun storeBaselineObservation(baselineObservation: BaselineObservation): BaselineObservation{
+        BaselineIngestionService.ingest(baselineObservation)
+        return baselineObservation
     }
 
 }

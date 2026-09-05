@@ -17,11 +17,10 @@ class BaselineIngestionService(
             observationType = observation.observationType,
             physiologicalState = observation.physiologicalState
         )
-
-        // Retrieves or creates an aggregator for a specific vital state which belongs to a specific user        val aggregator = registry.getOrCreate(baselineKey)
-        val aggregator = registry.getOrCreate(baselineKey)
-
         // Adds an observation to the aggregator.
-        aggregator.add(observation.value)
+        registry.add(
+            baselineKey,
+            observation.value
+        )
     }
 }

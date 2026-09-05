@@ -5,6 +5,7 @@ import com.orielair.api.vital.mapper.implementation.VitalMapper
 import com.orielair.api.vital.persistence.dto.VitalDto
 import com.orielair.api.vital.persistence.entity.Vital
 import com.orielair.api.vital.service.VitalService
+import com.orielair.api.vital.valueObject.baseline.BaselineObservation
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpMethod
@@ -47,6 +48,12 @@ class VitalController (val vitalService: VitalService, val vitalMapper: VitalMap
         val vitalPage = vitalService.readAll(pageable)
         val vitalPageDto = vitalPage.map{vitalMapper.mapTo(it)}
         return ResponseEntity(vitalPageDto, HttpStatus.OK)
+    }
+
+    @PostMapping("/baseline")
+    fun storeVital(@RequestBody baselineObservation: BaselineObservation): /*ResponseEntity<VitalDto>*/ ResponseEntity<BaselineObservation> {
+        val baselineObservation = vitalService.storeBaselineObservation(baselineObservation)
+        return ResponseEntity(baselineObservation, HttpStatus.CREATED)
     }
 
 }

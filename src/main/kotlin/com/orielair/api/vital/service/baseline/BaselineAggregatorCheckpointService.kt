@@ -5,10 +5,9 @@ import com.orielair.api.vital.valueObject.baseline.AggregationWindow
 import com.orielair.api.vital.valueObject.baseline.BaselineKey
 import org.springframework.stereotype.Service
 import java.time.Instant
-import kotlin.text.get
 
 @Service
-class BaselineAggregatorCheckointService {
+class BaselineAggregatorCheckpointService {
 
 
     // creates an instance of a checkpoint
@@ -50,13 +49,22 @@ class BaselineAggregatorCheckointService {
         windowEnd: Instant,
     ): List<BaselineAggregatorCheckpoint> {
 
-        return registry.keys().map { key ->
+        /*
+        * Atomically rotate the registry.
+        *
+        * The returned map contains the aggregators that belong to the
+        * completed aggregation window.
+        *
+        * A new empty aggregation map is now active inside the registry
+        * and can immediately receive observations for the next window.
+        */
+        val completedAggregators = registry.rotate()
 
-            // Retrieve the active aggregator associated with this key.
-            val aggregator = registry.get(key)
-                ?: error("No aggregator found for key: $key")
-
-            // Convert the live aggregator into a persistence-ready checkpoint.
+        /*
+         * Convert each completed BaselineAggregator into a
+         * persistence-ready checkpoint.
+         */
+        return completedAggregators.map { (key, aggregator) ->
             createCheckpoint(
                 key = key,
                 windowStart = windowStart,

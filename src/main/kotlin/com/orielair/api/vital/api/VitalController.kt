@@ -25,12 +25,10 @@ import java.util.UUID
 class VitalController (val vitalService: VitalService, val vitalMapper: VitalMapper) {
 
     @PostMapping
-    fun storeVital(@RequestBody dto: VitalDto): /*ResponseEntity<VitalDto>*/ ResponseEntity<VitalRecorded> {
+    fun storeVital(@RequestBody dto: VitalDto):ResponseEntity<VitalDto> {
         val vital = vitalMapper.mapFrom(dto)
-        val storedVital = vitalService.store(vital)
-        val publishedVital = vitalService.publishVital(storedVital)
-       // val storedVitalDto = vitalMapper.mapTo(vitalService.store(vital))
-        return ResponseEntity(publishedVital, HttpStatus.CREATED)
+        val storedVitalDto = vitalMapper.mapTo(vitalService.store(vital))
+        return ResponseEntity(storedVitalDto, HttpStatus.CREATED)
     }
 
     @GetMapping("/{id}")
@@ -49,11 +47,4 @@ class VitalController (val vitalService: VitalService, val vitalMapper: VitalMap
         val vitalPageDto = vitalPage.map{vitalMapper.mapTo(it)}
         return ResponseEntity(vitalPageDto, HttpStatus.OK)
     }
-
-    @PostMapping("/baseline")
-    fun storeVital(@RequestBody baselineObservation: BaselineObservation): /*ResponseEntity<VitalDto>*/ ResponseEntity<BaselineObservation> {
-        val baselineObservation = vitalService.storeBaselineObservation(baselineObservation)
-        return ResponseEntity(baselineObservation, HttpStatus.CREATED)
-    }
-
 }

@@ -1,6 +1,7 @@
 package com.orielair.api.vital.service
 
 import com.orielair.api.vital.`enum`.AcceptanceClassification
+import com.orielair.api.vital.enum.baseline.PhysiologicalState
 import com.orielair.api.vital.persistence.other.Observation
 import com.orielair.api.vital.persistence.other.VitalBundle
 import com.orielair.api.vital.persistence.other.Metadata
@@ -56,8 +57,13 @@ data class AccelerometerSample(
     val timestamp: Long
 )
 
+data class ClassifiedObservationBatch(
+    val metadata: Metadata,
+    val observationsByType: Map<String, List<RefinedObservation>>,
+    val physiologicalState: PhysiologicalState
+)
 
-class VitalIngestionOrchestrator {
+class VitalIngestionOrchestrator(val physiologicalStateClassifier: PhysiologicalStateClassifier) {
 
     companion object {
 
@@ -293,8 +299,8 @@ class VitalIngestionOrchestrator {
 
     val organizedObservationBatch = organizeObservations(
         metadata = vitalBundle.metadata,
-        acceptedObservations = filteringResult.accepted,
-        accelerometerSamples = filteringResult.accelerometerSamples
+        acceptedObservations = filteringResult.accepted.refinedObservations,
+accelerometerSamples = filteringResult.accepted.accelerometerSamples
     )
 
     // Continue with physiological state classification.
@@ -315,4 +321,20 @@ class VitalIngestionOrchestrator {
             accelerometerSamples = accelerometerSamples
         )
     }
+
+
+   fun classifyPhysiologicalState(
+        organizedBatch: OrganizedObservationBatch
+    ): ClassifiedObservationBatch {
+
+        val physiologicalState = physiologicalStateClassifier.classify(organizedBatch)
+
+        return ClassifiedObservationBatch(
+            metadata = organizedBatch.metadata,
+            observationsByType = organizedBatch.observationsByType,
+           physiologicalState = physiologicalState
+        )
+    }
+
+    
 }

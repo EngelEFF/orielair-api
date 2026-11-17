@@ -1,19 +1,24 @@
 import com.orielair.api.vital.`enum`.AcceptanceClassification
+import com.orielair.api.vital.enum.baseline.PhysiologicalState
 import com.orielair.api.vital.persistence.other.Metadata
 import com.orielair.api.vital.persistence.other.Observation
 import com.orielair.api.vital.persistence.other.VitalBundle
 import com.orielair.api.vital.service.AccelerometerSample
+import com.orielair.api.vital.service.OrganizedObservationBatch
+import com.orielair.api.vital.service.PhysiologicalStateClassifier
 import com.orielair.api.vital.service.RefinedObservation
 import com.orielair.api.vital.service.VitalIngestionOrchestrator
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
+import org.mockito.Mockito
 import kotlin.test.Test
 
 
 class VitalIngestionOrchestratorTest{
     // Inside VitalIngestionOrchestratorTest
     private lateinit var vitalIngestionOrchestrator: VitalIngestionOrchestrator
+    private lateinit var physiologicalStateClassifier: PhysiologicalStateClassifier
 
     val vitalBundle = VitalBundle(
         metadata = Metadata(
@@ -212,7 +217,8 @@ class VitalIngestionOrchestratorTest{
 
     @BeforeEach
     fun setUp() {
-        vitalIngestionOrchestrator = VitalIngestionOrchestrator()
+        physiologicalStateClassifier = PhysiologicalStateClassifier()
+        vitalIngestionOrchestrator = VitalIngestionOrchestrator(physiologicalStateClassifier)
     }
 
     @Test
@@ -764,6 +770,81 @@ This verifies that the method handles an empty input without throwing an excepti
 
         assertEquals(vitalBundle.metadata, result.metadata)
     }
+
+
+
+
+    @Test
+    fun `classifyPhysiologicalState returns classified observation batch`() {
+
+        // Arrange
+        val physiologicalStateClassifier =
+            Mockito.mock(PhysiologicalStateClassifier::class.java)
+
+        val orchestrator =
+            VitalIngestionOrchestrator(physiologicalStateClassifier)
+
+        val metadata = Metadata(
+            bundleId = "vb-classification-test-001",
+            userId = "test-user-001",
+            windowStart = 1793059200000L,
+            windowEnd = 1793059260000L
+        )
+
+        val observationsByType = mapOf(
+            "HEART_RATE" to listOf(
+                RefinedObservation(
+                    type = "HEART_RATE",
+                    value = 72,
+                    unit = "BPM",
+                    status = 1,
+                    timestamp = 1793059201000L
+                )
+            ),
+            "IBI" to listOf(
+                RefinedObservation(
+                    type = "IBI",
+                    value = 741,
+                    unit = "ms",
+                    status = 0,
+                    timestamp = 1793059202000L
+                )
+            )
+        )
+
+        val accelerometerSamples = listOf(
+            AccelerometerSample(
+                x = 120,
+                y = -45,
+                z = 975,
+                timestamp = 1793059201000L
+            )
+        )
+
+        val organizedBatch = OrganizedObservationBatch(
+            metadata = metadata,
+            observationsByType = observationsByType,
+            accelerometerSamples = accelerometerSamples
+        )
+
+        val expectedState = PhysiologicalState.AWAKE
+
+        Mockito.`when`(physiologicalStateClassifier.classify(organizedBatch))
+            .thenReturn(expectedState)
+
+        // Act
+        val classifiedBatch = orchestrator.classifyPhysiologicalState(organizedBatch)
+
+        // Assert
+        assertEquals(metadata, classifiedBatch.metadata)
+
+        assertEquals(observationsByType, classifiedBatch.observationsByType)
+
+        assertEquals(expectedState, classifiedBatch.physiologicalState)
+
+
+    }
+
 }
 
 

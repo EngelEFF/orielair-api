@@ -69,6 +69,13 @@ data class ProcessedObservationBatch(
     val physiologicalState: PhysiologicalState
 )
 
+data class VitalIngestionResult(
+    val metadata: Metadata,
+    val vitals: Map<String, List<RefinedObservation>>,
+    val physiologicalState: PhysiologicalState
+)
+
+
 class VitalIngestionOrchestrator(val physiologicalStateClassifier: PhysiologicalStateClassifier,
                                 val rrProcessor: RRProcessor,
                                  val hrvProcessor: HRVProcessor
@@ -379,6 +386,18 @@ accelerometerSamples = filteringResult.accepted.accelerometerSamples
             metadata = classifiedBatch.metadata,
             observationsByType = processedObservationsByType,
             physiologicalState = classifiedBatch.physiologicalState
+        )
+    }
+
+
+    fun assembleProcessedBatch(
+        processedBatch: ProcessedObservationBatch
+    ): VitalIngestionResult {
+
+        return VitalIngestionResult(
+            metadata = processedBatch.metadata,
+            vitals = processedBatch.observationsByType,
+            physiologicalState = processedBatch.physiologicalState
         )
     }
 }

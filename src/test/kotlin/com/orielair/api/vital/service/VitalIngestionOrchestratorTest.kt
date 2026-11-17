@@ -8,6 +8,7 @@ import com.orielair.api.vital.service.ClassifiedObservationBatch
 import com.orielair.api.vital.service.HRVProcessor
 import com.orielair.api.vital.service.OrganizedObservationBatch
 import com.orielair.api.vital.service.PhysiologicalStateClassifier
+import com.orielair.api.vital.service.ProcessedObservationBatch
 import com.orielair.api.vital.service.RRProcessor
 import com.orielair.api.vital.service.RefinedObservation
 import com.orielair.api.vital.service.VitalIngestionOrchestrator
@@ -991,6 +992,63 @@ This verifies that the method handles an empty input without throwing an excepti
         // Verify that both processors received the classified batch.
         Mockito.verify(rrProcessor).process(classifiedBatch)
         Mockito.verify(hrvProcessor).process(classifiedBatch)
+    }
+
+
+    @Test
+    fun `should assemble processed batch into vital ingestion result`() {
+
+        val metadata = Metadata(
+            bundleId = "vb-assembly-test-001",
+            userId = "test-user-001",
+            windowStart = 1793059200000L,
+            windowEnd = 1793059260000L
+        )
+        
+        // Arrange
+        val processedObservations = mapOf(
+            "HEART_RATE" to listOf(
+                RefinedObservation(
+                    type = "HEART_RATE",
+                    value = 75,
+                    unit = "bpm",
+                    status = 1,
+                    timestamp = 1793059200000L
+                )
+            ),
+            "HRV" to listOf(
+                RefinedObservation(
+                    type = "HRV",
+                    value = 45,
+                    unit = "ms",
+                    status = 1,
+                    timestamp = 1793059201000L
+                )
+            ),
+            "RESPIRATORY_RATE" to listOf(
+                RefinedObservation(
+                    type = "RESPIRATORY_RATE",
+                    value = 15,
+                    unit = "br/min",
+                    status = 1,
+                    timestamp = 1793059202000L
+                )
+            )
+        )
+
+        val processedBatch = ProcessedObservationBatch(
+            metadata = metadata,
+            observationsByType = processedObservations,
+            physiologicalState = PhysiologicalState.AWAKE
+        )
+
+        // Act
+        val result = vitalIngestionOrchestrator.assembleProcessedBatch(processedBatch)
+
+        // Assert
+        assertEquals(metadata, result.metadata)
+        assertEquals(processedObservations, result.vitals)
+        assertEquals(PhysiologicalState.AWAKE, result.physiologicalState)
     }
 }
 

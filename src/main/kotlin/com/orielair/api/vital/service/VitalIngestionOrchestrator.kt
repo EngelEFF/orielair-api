@@ -3,6 +3,7 @@ package com.orielair.api.vital.service
 import com.orielair.api.vital.`enum`.AcceptanceClassification
 import com.orielair.api.vital.persistence.other.Observation
 import com.orielair.api.vital.persistence.other.VitalBundle
+import com.orielair.api.vital.persistence.other.Metadata
 
 // Add imports for Observation and VitalBundle from their existing packages.
 
@@ -35,6 +36,11 @@ data class ObservationFilterResult(
     val rejected: List<ObservationRejection>,
     val malformed: List<MalformedObservationRejection>,
     val unsupported: List<UnsupportedObservationRejection>
+)
+
+data class OrganizedObservationBatch(
+    val metadata: Metadata,
+    val observationsByType: Map<String, List<RefinedObservation>>
 )
 
 class VitalIngestionOrchestrator {
@@ -230,6 +236,20 @@ class VitalIngestionOrchestrator {
             rejected = rejectedObservations,
             malformed = malformedObservations,
             unsupported = unsupportedObservations
+        )
+    }
+
+
+    fun organizeObservations(
+        metadata: Metadata,
+        acceptedObservations: List<RefinedObservation>
+    ): OrganizedObservationBatch {
+
+        val observationsByType = acceptedObservations.groupBy { it.type }
+
+        return OrganizedObservationBatch(
+            metadata = metadata,
+            observationsByType = observationsByType
         )
     }
 }

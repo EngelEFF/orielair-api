@@ -2,6 +2,7 @@ import com.orielair.api.vital.`enum`.AcceptanceClassification
 import com.orielair.api.vital.persistence.other.Metadata
 import com.orielair.api.vital.persistence.other.Observation
 import com.orielair.api.vital.persistence.other.VitalBundle
+import com.orielair.api.vital.service.RefinedObservation
 import com.orielair.api.vital.service.VitalIngestionOrchestrator
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -486,6 +487,109 @@ class VitalIngestionOrchestratorTest{
         assertTrue(result.accepted.isEmpty())
         assertTrue(result.rejected.isEmpty())
         assertTrue(result.unsupported.isEmpty())
+    }
+
+/*
+Groups observations by type and preserves order
+This is our primary test. We'll deliberately interleave observation types to verify that groupBy() places them in the correct collections without changing their relative order
+*/
+    @Test
+    fun `organizeObservations groups observations by type and preserves their order`() {
+
+        val metadata = vitalBundle.metadata
+
+        val acceptedObservations = listOf(
+            RefinedObservation("HEART_RATE", 72, "BPM", 1, 1000L),
+            RefinedObservation("IBI", 741, "ms", 0, 1000L),
+            RefinedObservation("PPG_GREEN", 1250, "ADC", 0, 1000L),
+            RefinedObservation("HEART_RATE", 75, "BPM", 1, 2000L),
+            RefinedObservation("IBI", 753, "ms", 0, 2000L),
+            RefinedObservation("HEART_RATE", 78, "BPM", 1, 3000L),
+            RefinedObservation("PPG_GREEN", 1240, "ADC", 0, 2000L)
+        )
+
+        val result = vitalIngestionOrchestrator.organizeObservations(
+            metadata = metadata,
+            acceptedObservations = acceptedObservations
+        )
+
+        // Verify metadata preservation
+        assertEquals(metadata, result.metadata)
+
+        // Verify all observation types were grouped
+        assertEquals(
+            setOf("HEART_RATE", "IBI", "PPG_GREEN"),
+            result.observationsByType.keys
+        )
+
+
+        // Verify HEART_RATE grouping and ordering
+        assertEquals(
+            listOf(72, 75, 78),
+            result.observationsByType["HEART_RATE"]?.map { it.value }
+        )
+
+        // Verify IBI grouping and ordering
+        assertEquals(
+            listOf(741, 753),
+            result.observationsByType["IBI"]?.map { it.value }
+        )
+
+        // Verify PPG_GREEN grouping and ordering
+        assertEquals(
+            listOf(1250, 1240),
+            result.observationsByType["PPG_GREEN"]?.map { it.value }
+        )
+    }
+
+
+    /*
+    Handles observations belonging to a single type
+This verifies that the method doesn't introduce unnecessary groups or empty collections.
+     */
+    @Test
+    fun `organizeObservations handles observations of a single type`() {
+
+        val acceptedObservations = listOf(
+            RefinedObservation("IBI", 741, "ms", 0, 1000L),
+            RefinedObservation("IBI", 753, "ms", 0, 2000L),
+            RefinedObservation("IBI", 719, "ms", 0, 3000L)
+        )
+
+        val result = vitalIngestionOrchestrator.organizeObservations(
+            metadata = vitalBundle.metadata,
+            acceptedObservations = acceptedObservations
+        )
+
+        assertEquals(
+            setOf("IBI"),
+            result.observationsByType.keys
+        )
+
+        assertEquals(
+            acceptedObservations,
+            result.observationsByType["IBI"]
+        )
+
+        assertEquals(vitalBundle.metadata, result.metadata)
+    }
+
+/*
+Handles an empty observation collection
+This verifies that the method handles an empty input without throwing an exception and still preserves the bundle metadata
+ */
+
+    @Test
+    fun `organizeObservations handles an empty observation collection`() {
+
+        val result = vitalIngestionOrchestrator.organizeObservations(
+            metadata = vitalBundle.metadata,
+            acceptedObservations = emptyList()
+        )
+
+        assertTrue(result.observationsByType.isEmpty())
+
+        assertEquals(vitalBundle.metadata, result.metadata)
     }
 }
 

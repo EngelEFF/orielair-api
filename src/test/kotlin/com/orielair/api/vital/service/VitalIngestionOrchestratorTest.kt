@@ -17,6 +17,9 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.mockito.Mockito
 import kotlin.test.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
+import org.mockito.kotlin.verify
 
 
 class VitalIngestionOrchestratorTest{
@@ -1049,6 +1052,121 @@ This verifies that the method handles an empty input without throwing an excepti
         assertEquals(metadata, result.metadata)
         assertEquals(processedObservations, result.vitals)
         assertEquals(PhysiologicalState.AWAKE, result.physiologicalState)
+    }
+
+
+    /*
+  * Tests the complete vital ingestion orchestration flow using Mockito.
+  *
+  * Mockito mocks the PhysiologicalStateClassifier, RRProcessor and HRVProcessor
+  * dependencies so their outputs can be controlled without executing their
+  * actual implementations. `whenever().thenReturn()` stubs their responses,
+  * while `any<T>()` matches any argument of the specified type because the
+  * actual batches are created internally by the orchestrator.
+  *
+  * Mockito-Kotlin is used instead of Mockito's Java matchers because its
+  * type-safe matchers handle Kotlin's non-null parameter requirements,
+  * avoiding the null-placeholder issue caused by Mockito.any().
+  *
+  * `verify()` additionally confirms that both processors are invoked.
+  * This allows the test to focus on whether the orchestrator correctly
+  * coordinates the pipeline and assembles the expected ingestion result.
+  */
+    @Test
+    fun `orchestrate processes vital bundle and returns vital ingestion result`() {
+        // Arrange
+        val expectedState = PhysiologicalState.AWAKE
+
+        whenever(
+            physiologicalStateClassifier.classify(
+                any<OrganizedObservationBatch>()
+            )
+        ).thenReturn(expectedState)
+
+        val expectedRespiratoryRateObservations = listOf(
+            RefinedObservation(
+                type = "RESPIRATORY_RATE",
+                value = 15,
+                unit = "br/min",
+                status = 1,
+                timestamp = 1793059201000L
+            ),
+            RefinedObservation(
+                type = "RESPIRATORY_RATE",
+                value = 16,
+                unit = "br/min",
+                status = 1,
+                timestamp = 1793059230000L
+            )
+        )
+
+        val expectedHRVObservations = listOf(
+            RefinedObservation(
+                type = "HRV",
+                value = 45,
+                unit = "ms",
+                status = 1,
+                timestamp = 1793059201000L
+            ),
+            RefinedObservation(
+                type = "HRV",
+                value = 48,
+                unit = "ms",
+                status = 1,
+                timestamp = 1793059230000L
+            )
+        )
+
+        whenever(
+            rrProcessor.process(
+                any<ClassifiedObservationBatch>()
+            )
+        ).thenReturn(expectedRespiratoryRateObservations)
+
+        whenever(
+            hrvProcessor.process(
+                any<ClassifiedObservationBatch>()
+            )
+        ).thenReturn(expectedHRVObservations)
+
+        // Act
+        val result = vitalIngestionOrchestrator.orchestrate(vitalBundle)
+
+        // Assert
+
+        // Metadata is preserved.
+        assertEquals(vitalBundle.metadata, result.metadata)
+
+        // Physiological state is propagated.
+        assertEquals(expectedState, result.physiologicalState)
+
+        // Accepted HEART_RATE observations are retained.
+        assertEquals(
+            listOf(72),
+            result.vitals["HEART_RATE"]?.map { it.value }
+        )
+
+        // RR processor output is included.
+        assertEquals(
+            expectedRespiratoryRateObservations,
+            result.vitals["RESPIRATORY_RATE"]
+        )
+
+        // HRV processor output is included.
+        assertEquals(
+            expectedHRVObservations,
+            result.vitals["HRV"]
+        )
+
+        // Raw PPG_GREEN and IBI observations are replaced by processed results.
+        assertEquals(
+            setOf("HEART_RATE", "RESPIRATORY_RATE", "HRV"),
+            result.vitals.keys
+        )
+
+        // Both processors must have received their classified batch.
+        verify(rrProcessor).process(any<ClassifiedObservationBatch>())
+        verify(hrvProcessor).process(any<ClassifiedObservationBatch>())
     }
 }
 

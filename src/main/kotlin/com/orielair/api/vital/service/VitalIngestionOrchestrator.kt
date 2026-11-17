@@ -116,6 +116,33 @@ class VitalIngestionOrchestrator(val physiologicalStateClassifier: Physiological
             ?: AcceptanceClassification.UNSPECIFIED
     }
 
+    fun orchestrate(vitalBundle: VitalBundle): VitalIngestionResult {
+        return try {
+            // 1. Filter the incoming observations
+            val filterResult = filterObservations(vitalBundle)
+
+            // 2. Organize the accepted observations
+            val organizedBatch = organizeObservations(
+                vitalBundle.metadata,
+                acceptedObservations = filterResult.accepted.refinedObservations,
+                accelerometerSamples = filterResult.accepted.accelerometerSamples
+            )
+
+            // 3. Classify the physiological state
+            val classifiedBatch = classifyPhysiologicalState(organizedBatch)
+
+            // 4. Dispatch observations to their respective processors
+            val processedBatch = dispatchProcessing(classifiedBatch)
+
+            // 5. Assemble the final ingestion result
+            assembleProcessedBatch(processedBatch)
+
+        } catch (exception: Exception) {
+            throw  exception
+        }
+    }
+
+
     fun filterObservations(
         vitalBundle: VitalBundle
     ): ObservationFilterResult {

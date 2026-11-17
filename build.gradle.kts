@@ -59,6 +59,7 @@ dependencies {
 	testImplementation("org.springframework.cloud:spring-cloud-stream-test-binder")
     testImplementation("io.mockk:mockk:1.14.0")  // Mocking Dependencies
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:6.4.0")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // Specific to the baseline engine

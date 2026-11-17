@@ -14,6 +14,10 @@ data class RefinedObservation(
     val status: Int,
     val timestamp: Long?
 )
+data class AcceptedObservationData(
+    val refinedObservations: List<RefinedObservation>,
+    val accelerometerSamples: List<AccelerometerSample>
+)
 
 data class ObservationRejection(
     val observation: RefinedObservation,
@@ -32,7 +36,7 @@ data class UnsupportedObservationRejection(
 )
 
 data class ObservationFilterResult(
-    val accepted: List<RefinedObservation>,
+    val accepted: AcceptedObservationData,
     val rejected: List<ObservationRejection>,
     val malformed: List<MalformedObservationRejection>,
     val unsupported: List<UnsupportedObservationRejection>
@@ -40,8 +44,18 @@ data class ObservationFilterResult(
 
 data class OrganizedObservationBatch(
     val metadata: Metadata,
-    val observationsByType: Map<String, List<RefinedObservation>>
+    val observationsByType: Map<String, List<RefinedObservation>>,
+    val accelerometerSamples: List<AccelerometerSample>
 )
+
+
+data class AccelerometerSample(
+    val x: Int,
+    val y: Int,
+    val z: Int,
+    val timestamp: Long
+)
+
 
 class VitalIngestionOrchestrator {
 
@@ -85,6 +99,7 @@ class VitalIngestionOrchestrator {
     ): ObservationFilterResult {
 
         val acceptedObservations = mutableListOf<RefinedObservation>()
+        val acceptedAccelerometerSamples = mutableListOf<AccelerometerSample>()
         val rejectedObservations = mutableListOf<ObservationRejection>()
         val malformedObservations = mutableListOf<MalformedObservationRejection>()
         val unsupportedObservations = mutableListOf<UnsupportedObservationRejection>()
@@ -219,6 +234,33 @@ class VitalIngestionOrchestrator {
                         }
                 }
 
+                "ACCELEROMETER" -> {
+
+                    val timestamp = observation.timestamp
+
+                    if (observation.values.size != 3 || timestamp == null) {
+                        malformedObservations.add(
+                            MalformedObservationRejection(
+                                observation = observation,
+                                reason = "Expected exactly three accelerometer axis values " +
+                                        "(X, Y, Z) and a timestamp; got " +
+                                        "values=${observation.values.size}, " +
+                                        "timestamp=$timestamp."
+                            )
+                        )
+                        return@forEach
+                    }
+
+                    val accelerometerSample = AccelerometerSample(
+                        x = observation.values[0],
+                        y = observation.values[1],
+                        z = observation.values[2],
+                        timestamp = timestamp
+                    )
+
+                    acceptedAccelerometerSamples.add(accelerometerSample)
+                }
+
                 else -> {
                     unsupportedObservations.add(
                         UnsupportedObservationRejection(
@@ -232,7 +274,10 @@ class VitalIngestionOrchestrator {
         }
 
         return ObservationFilterResult(
-            accepted = acceptedObservations,
+            accepted = AcceptedObservationData(
+                refinedObservations = acceptedObservations,
+                accelerometerSamples = acceptedAccelerometerSamples
+            ),
             rejected = rejectedObservations,
             malformed = malformedObservations,
             unsupported = unsupportedObservations
@@ -240,16 +285,34 @@ class VitalIngestionOrchestrator {
     }
 
 
+    /*
+    Sample usage:
+
+
+    val filteringResult = filterObservations(vitalBundle)
+
+    val organizedObservationBatch = organizeObservations(
+        metadata = vitalBundle.metadata,
+        acceptedObservations = filteringResult.accepted,
+        accelerometerSamples = filteringResult.accelerometerSamples
+    )
+
+    // Continue with physiological state classification.
+
+     */
+
     fun organizeObservations(
         metadata: Metadata,
-        acceptedObservations: List<RefinedObservation>
+        acceptedObservations: List<RefinedObservation>,
+        accelerometerSamples: List<AccelerometerSample>
     ): OrganizedObservationBatch {
 
         val observationsByType = acceptedObservations.groupBy { it.type }
 
         return OrganizedObservationBatch(
             metadata = metadata,
-            observationsByType = observationsByType
+            observationsByType = observationsByType,
+            accelerometerSamples = accelerometerSamples
         )
     }
 }

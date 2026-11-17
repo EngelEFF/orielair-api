@@ -2,6 +2,7 @@ import com.orielair.api.vital.`enum`.AcceptanceClassification
 import com.orielair.api.vital.persistence.other.Metadata
 import com.orielair.api.vital.persistence.other.Observation
 import com.orielair.api.vital.persistence.other.VitalBundle
+import com.orielair.api.vital.service.AccelerometerSample
 import com.orielair.api.vital.service.RefinedObservation
 import com.orielair.api.vital.service.VitalIngestionOrchestrator
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -171,7 +172,41 @@ class VitalIngestionOrchestratorTest{
                 unit = "ms",
                 statuses = listOf(0, -1),
                 timestamp = 1793059215000L
+            ),
+
+            // =====================================================
+// ACCELEROMETER
+// =====================================================
+
+// GOOD: Three valid axis values (X, Y, Z).
+// Statuses are intentionally empty.
+            Observation(
+                type = "ACCELEROMETER",
+                values = listOf(120, -45, 975),
+                unit = "m/s²",
+                statuses = emptyList(),
+                timestamp = 1793059216000L
+            ),
+
+// GOOD: Another valid accelerometer sample.
+            Observation(
+                type = "ACCELEROMETER",
+                values = listOf(135, -52, 982),
+                unit = "m/s²",
+                statuses = emptyList(),
+                timestamp = 1793059217000L
+            ),
+
+// GOOD: Another valid accelerometer sample.
+            Observation(
+                type = "ACCELEROMETER",
+                values = listOf(110, -38, 968),
+                unit = "m/s²",
+                statuses = emptyList(),
+                timestamp = 1793059218000L
             )
+
+
         )
     )
 
@@ -186,7 +221,7 @@ class VitalIngestionOrchestratorTest{
         val result = vitalIngestionOrchestrator.filterObservations(vitalBundle)
 
         // Overall outcome counts
-        assertEquals(5, result.accepted.size)
+        assertEquals(5, result.accepted.refinedObservations.size)
         assertEquals(12, result.rejected.size)
         assertEquals(3, result.malformed.size)
         assertEquals(0, result.unsupported.size)
@@ -194,12 +229,12 @@ class VitalIngestionOrchestratorTest{
         // GOOD: PPG_GREEN and HEART_RATE
         assertEquals(
             1,
-            result.accepted.count { it.type == "PPG_GREEN" }
+            result.accepted.refinedObservations.count { it.type == "PPG_GREEN" }
         )
 
         assertEquals(
             1,
-            result.accepted.count { it.type == "HEART_RATE" }
+            result.accepted.refinedObservations.count { it.type == "HEART_RATE" }
         )
 
         // Every recognized BAD HEART_RATE status is handled
@@ -244,7 +279,7 @@ class VitalIngestionOrchestratorTest{
         // IBI: valid readings are accepted independently
         assertEquals(
             listOf(741, 753, 719),
-            result.accepted
+            result.accepted.refinedObservations
                 .filter { it.type == "IBI" }
                 .map { it.value }
         )
@@ -340,7 +375,7 @@ class VitalIngestionOrchestratorTest{
 
         assertTrue(result.unsupported.single().reason.isNotBlank())
 
-        assertTrue(result.accepted.isEmpty())
+        assertTrue(result.accepted.refinedObservations.isEmpty())
         assertTrue(result.rejected.isEmpty())
         assertTrue(result.malformed.isEmpty())
     }
@@ -370,7 +405,7 @@ class VitalIngestionOrchestratorTest{
 
         assertTrue(result.malformed.single().reason.isNotBlank())
 
-        assertTrue(result.accepted.isEmpty())
+        assertTrue(result.accepted.refinedObservations.isEmpty())
         assertTrue(result.rejected.isEmpty())
         assertTrue(result.unsupported.isEmpty())
     }
@@ -403,7 +438,7 @@ class VitalIngestionOrchestratorTest{
         assertTrue(rejection.reason.contains("values=3"))
         assertTrue(rejection.reason.contains("statuses=2"))
 
-        assertTrue(result.accepted.isEmpty())
+        assertTrue(result.accepted.refinedObservations.isEmpty())
         assertTrue(result.rejected.isEmpty())
         assertTrue(result.unsupported.isEmpty())
     }
@@ -484,10 +519,144 @@ class VitalIngestionOrchestratorTest{
             }
         )
 
-        assertTrue(result.accepted.isEmpty())
+        assertTrue(result.accepted.refinedObservations.isEmpty())
         assertTrue(result.rejected.isEmpty())
         assertTrue(result.unsupported.isEmpty())
     }
+
+
+    /*
+    Test successful accelerometer extraction
+This verifies that all three samples are accepted, their axes are correctly extracted, and no status information is required
+     */
+
+    @Test
+    fun `filterObservations accepts and extracts accelerometer samples`() {
+
+        val accelerometerObservations = vitalBundle.observations.filter {
+            it.type == "ACCELEROMETER"
+        }
+
+        val result = vitalIngestionOrchestrator.filterObservations(
+            vitalBundle.copy(
+                observations = accelerometerObservations
+            )
+        )
+
+
+        assertEquals(3, result.accepted.accelerometerSamples.size)
+
+        assertEquals(
+            listOf(
+                AccelerometerSample(120, -45, 975, 1793059216000L),
+                AccelerometerSample(135, -52, 982, 1793059217000L),
+                AccelerometerSample(110, -38, 968, 1793059218000L)
+            ),
+            result.accepted.accelerometerSamples
+        )
+
+        assertTrue(result.accepted.refinedObservations.isEmpty())
+        assertTrue(result.rejected.isEmpty())
+        assertTrue(result.malformed.isEmpty())
+        assertTrue(result.unsupported.isEmpty())
+    }
+
+    /*
+    Test malformed accelerometer axis collections
+    An accelerometer sample must contain exactly three axis values.
+    Let's test both insufficient and excessive values.
+     */
+    @Test
+    fun `filterObservations marks invalid accelerometer axis counts as malformed`() {
+
+        val malformedObservations = listOf(
+
+            // MALFORMED: Missing Z axis.
+            Observation(
+                type = "ACCELEROMETER",
+                values = listOf(120, -45),
+                unit = "m/s²",
+                statuses = emptyList(),
+                timestamp = 1793059216000L
+            ),
+
+            // MALFORMED: Unexpected fourth axis value.
+            Observation(
+                type = "ACCELEROMETER",
+                values = listOf(120, -45, 975, 100),
+                unit = "m/s²",
+                statuses = emptyList(),
+                timestamp = 1793059217000L
+            )
+        )
+
+        val result = vitalIngestionOrchestrator.filterObservations(
+            vitalBundle.copy(
+                observations = malformedObservations
+            )
+        )
+
+        assertEquals(2, result.malformed.size)
+
+        assertEquals(
+            malformedObservations,
+            result.malformed.map { it.observation }
+        )
+
+        assertTrue(result.malformed.all { it.reason.isNotBlank() })
+
+        assertTrue(result.accepted.accelerometerSamples.isEmpty())
+        assertTrue(result.accepted.accelerometerSamples.isEmpty())
+        assertTrue(result.rejected.isEmpty())
+        assertTrue(result.unsupported.isEmpty())
+    }
+
+
+    /*
+    Since AccelerometerSample requires a timestamp, a missing timestamp should also result in a malformed observation
+     */
+    @Test
+    fun `filterObservations marks accelerometer samples without timestamps as malformed`() {
+
+        val observation = Observation(
+            type = "ACCELEROMETER",
+            values = listOf(120, -45, 975),
+            unit = "m/s²",
+            statuses = emptyList(),
+            timestamp = null
+        )
+
+        val result = vitalIngestionOrchestrator.filterObservations(
+            vitalBundle.copy(
+                observations = listOf(observation)
+            )
+        )
+
+        assertEquals(1, result.malformed.size)
+
+        assertEquals(
+            observation,
+            result.malformed.single().observation
+        )
+
+        assertTrue(result.malformed.single().reason.isNotBlank())
+
+        assertTrue(result.accepted.accelerometerSamples.isEmpty())
+        assertTrue(result.accepted.accelerometerSamples.isEmpty())
+        assertTrue(result.rejected.isEmpty())
+        assertTrue(result.unsupported.isEmpty())
+    }
+
+
+
+
+
+
+
+
+
+
+
 
 /*
 Groups observations by type and preserves order
@@ -510,7 +679,8 @@ This is our primary test. We'll deliberately interleave observation types to ver
 
         val result = vitalIngestionOrchestrator.organizeObservations(
             metadata = metadata,
-            acceptedObservations = acceptedObservations
+            acceptedObservations = acceptedObservations,
+            accelerometerSamples = emptyList(),
         )
 
         // Verify metadata preservation
@@ -558,7 +728,9 @@ This verifies that the method doesn't introduce unnecessary groups or empty coll
 
         val result = vitalIngestionOrchestrator.organizeObservations(
             metadata = vitalBundle.metadata,
-            acceptedObservations = acceptedObservations
+            acceptedObservations = acceptedObservations,
+            accelerometerSamples = emptyList()
+
         )
 
         assertEquals(
@@ -584,7 +756,8 @@ This verifies that the method handles an empty input without throwing an excepti
 
         val result = vitalIngestionOrchestrator.organizeObservations(
             metadata = vitalBundle.metadata,
-            acceptedObservations = emptyList()
+            acceptedObservations = emptyList(),
+            accelerometerSamples = emptyList(),
         )
 
         assertTrue(result.observationsByType.isEmpty())

@@ -63,7 +63,16 @@ data class ClassifiedObservationBatch(
     val physiologicalState: PhysiologicalState
 )
 
-class VitalIngestionOrchestrator(val physiologicalStateClassifier: PhysiologicalStateClassifier) {
+data class ProcessedObservationBatch(
+    val metadata: Metadata,
+    val observationsByType: Map<String, List<RefinedObservation>>,
+    val physiologicalState: PhysiologicalState
+)
+
+class VitalIngestionOrchestrator(val physiologicalStateClassifier: PhysiologicalStateClassifier,
+                                val rrProcessor: RRProcessor,
+                                 val hrvProcessor: HRVProcessor
+) {
 
     companion object {
 
@@ -336,5 +345,40 @@ accelerometerSamples = filteringResult.accepted.accelerometerSamples
         )
     }
 
-    
+
+
+   fun dispatchProcessing(
+        classifiedBatch: ClassifiedObservationBatch
+    ): ProcessedObservationBatch {
+
+        // This statement creates a mutable copy of the observation map, excluding the PPG_GREEN and IBI entries
+       // it ends up returning a mutable by calling .toMutableMap() in the form of  mapOf("HEART_RATE" to heartRateObservations)
+        val processedObservationsByType = classifiedBatch.observationsByType
+            .filterKeys { it != "PPG_GREEN" && it != "IBI" }
+            .toMutableMap()
+
+        // Process PPG observations into respiratory rate observations.
+        if (!classifiedBatch.observationsByType["PPG_GREEN"].isNullOrEmpty()) {
+            val respiratoryRateObservations = rrProcessor.process(classifiedBatch)
+
+            processedObservationsByType.putAll(
+                respiratoryRateObservations.groupBy { it.type }
+            )
+        }
+
+        // Process IBI observations into HRV observations.
+        if (!classifiedBatch.observationsByType["IBI"].isNullOrEmpty()) {
+            val hrvObservations = hrvProcessor.process(classifiedBatch)
+
+            processedObservationsByType.putAll(
+                hrvObservations.groupBy { it.type }
+            )
+        }
+
+        return ProcessedObservationBatch(
+            metadata = classifiedBatch.metadata,
+            observationsByType = processedObservationsByType,
+            physiologicalState = classifiedBatch.physiologicalState
+        )
+    }
 }

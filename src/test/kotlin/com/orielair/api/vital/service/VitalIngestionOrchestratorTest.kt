@@ -4,8 +4,11 @@ import com.orielair.api.vital.persistence.other.Metadata
 import com.orielair.api.vital.persistence.other.Observation
 import com.orielair.api.vital.persistence.other.VitalBundle
 import com.orielair.api.vital.service.AccelerometerSample
+import com.orielair.api.vital.service.ClassifiedObservationBatch
+import com.orielair.api.vital.service.HRVProcessor
 import com.orielair.api.vital.service.OrganizedObservationBatch
 import com.orielair.api.vital.service.PhysiologicalStateClassifier
+import com.orielair.api.vital.service.RRProcessor
 import com.orielair.api.vital.service.RefinedObservation
 import com.orielair.api.vital.service.VitalIngestionOrchestrator
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -19,6 +22,8 @@ class VitalIngestionOrchestratorTest{
     // Inside VitalIngestionOrchestratorTest
     private lateinit var vitalIngestionOrchestrator: VitalIngestionOrchestrator
     private lateinit var physiologicalStateClassifier: PhysiologicalStateClassifier
+    private lateinit var rrProcessor: RRProcessor
+    private lateinit var hrvProcessor: HRVProcessor
 
     val vitalBundle = VitalBundle(
         metadata = Metadata(
@@ -217,8 +222,18 @@ class VitalIngestionOrchestratorTest{
 
     @BeforeEach
     fun setUp() {
-        physiologicalStateClassifier = PhysiologicalStateClassifier()
-        vitalIngestionOrchestrator = VitalIngestionOrchestrator(physiologicalStateClassifier)
+        physiologicalStateClassifier =
+            Mockito.mock(PhysiologicalStateClassifier::class.java)
+
+        rrProcessor = Mockito.mock(RRProcessor::class.java)
+        hrvProcessor = Mockito.mock(HRVProcessor::class.java)
+
+        vitalIngestionOrchestrator = VitalIngestionOrchestrator(
+            physiologicalStateClassifier,
+            rrProcessor,
+            hrvProcessor
+        )
+
     }
 
     @Test
@@ -781,9 +796,6 @@ This verifies that the method handles an empty input without throwing an excepti
         val physiologicalStateClassifier =
             Mockito.mock(PhysiologicalStateClassifier::class.java)
 
-        val orchestrator =
-            VitalIngestionOrchestrator(physiologicalStateClassifier)
-
         val metadata = Metadata(
             bundleId = "vb-classification-test-001",
             userId = "test-user-001",
@@ -833,7 +845,7 @@ This verifies that the method handles an empty input without throwing an excepti
             .thenReturn(expectedState)
 
         // Act
-        val classifiedBatch = orchestrator.classifyPhysiologicalState(organizedBatch)
+        val classifiedBatch = vitalIngestionOrchestrator.classifyPhysiologicalState(organizedBatch)
 
         // Assert
         assertEquals(metadata, classifiedBatch.metadata)
@@ -845,6 +857,141 @@ This verifies that the method handles an empty input without throwing an excepti
 
     }
 
+
+    @Test
+    fun `dispatchProcessing returns processed observation batch`() {
+
+        // Arrange
+        val metadata = Metadata(
+            bundleId = "vb-dispatch-test-001",
+            userId = "test-user-001",
+            windowStart = 1793059200000L,
+            windowEnd = 1793059260000L
+        )
+
+        val heartRateObservations = listOf(
+            RefinedObservation(
+                type = "HEART_RATE",
+                value = 72,
+                unit = "BPM",
+                status = 1,
+                timestamp = 1793059201000L
+            )
+        )
+
+        val ibiObservations = listOf(
+            RefinedObservation(
+                type = "IBI",
+                value = 741,
+                unit = "ms",
+                status = 0,
+                timestamp = 1793059202000L
+            )
+        )
+
+        val ppgObservations = listOf(
+            RefinedObservation(
+                type = "PPG_GREEN",
+                value = 1250,
+                unit = "ADC",
+                status = 0,
+                timestamp = 1793059203000L
+            )
+        )
+
+        val observationsByType = mapOf(
+            "HEART_RATE" to heartRateObservations,
+            "IBI" to ibiObservations,
+            "PPG_GREEN" to ppgObservations
+        )
+
+        val expectedState = PhysiologicalState.AWAKE
+
+        val classifiedBatch = ClassifiedObservationBatch(
+            metadata = metadata,
+            observationsByType = observationsByType,
+            physiologicalState = expectedState
+        )
+
+        val expectedRespiratoryRateObservations = listOf(
+            RefinedObservation(
+                type = "RESPIRATORY_RATE",
+                value = 15,
+                unit = "br/min",
+                status = 1,
+                timestamp = 1793059201000L
+            ),
+            RefinedObservation(
+                type = "RESPIRATORY_RATE",
+                value = 16,
+                unit = "br/min",
+                status = 1,
+                timestamp = 1793059230000L
+            )
+        )
+
+        val expectedHRVObservations = listOf(
+            RefinedObservation(
+                type = "HRV",
+                value = 45,
+                unit = "ms",
+                status = 1,
+                timestamp = 1793059201000L
+            ),
+            RefinedObservation(
+                type = "HRV",
+                value = 48,
+                unit = "ms",
+                status = 1,
+                timestamp = 1793059230000L
+            )
+        )
+
+        Mockito.`when`(rrProcessor.process(classifiedBatch))
+            .thenReturn(expectedRespiratoryRateObservations)
+
+        Mockito.`when`(hrvProcessor.process(classifiedBatch))
+            .thenReturn(expectedHRVObservations)
+
+        // Act
+        val processedBatch =
+            vitalIngestionOrchestrator.dispatchProcessing(classifiedBatch)
+
+        // Assert
+        assertEquals(metadata, processedBatch.metadata)
+
+        assertEquals(
+            expectedState,
+            processedBatch.physiologicalState
+        )
+
+        // Original observations that were not processed are retained.
+        assertEquals(
+            heartRateObservations,
+            processedBatch.observationsByType["HEART_RATE"]
+        )
+
+        // Processor outputs replace their respective input observation groups.
+        assertEquals(
+            expectedRespiratoryRateObservations,
+            processedBatch.observationsByType["RESPIRATORY_RATE"]
+        )
+
+        assertEquals(
+            expectedHRVObservations,
+            processedBatch.observationsByType["HRV"]
+        )
+
+        // Original PPG_GREEN and IBI groups are no longer present.
+        assertEquals(
+            setOf("HEART_RATE", "RESPIRATORY_RATE", "HRV"),
+            processedBatch.observationsByType.keys
+        )
+
+        // Verify that both processors received the classified batch.
+        Mockito.verify(rrProcessor).process(classifiedBatch)
+        Mockito.verify(hrvProcessor).process(classifiedBatch)
+    }
 }
 
 

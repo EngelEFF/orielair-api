@@ -13,7 +13,7 @@ class HRVProcessor {
         return listOf(
             RefinedObservation(
                 type = "HEART_RATE_VARIABILITY",
-                value = 45,
+                value = 45.0,
                 unit = "ms",
                 status = 1,
                 timestamp = 1793059201000L

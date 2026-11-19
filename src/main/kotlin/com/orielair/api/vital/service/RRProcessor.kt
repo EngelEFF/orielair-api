@@ -13,7 +13,7 @@ class RRProcessor {
         return listOf(
             RefinedObservation(
                 type = "RESPIRATORY_RATE",
-                value = 15,
+                value = 15.0,
                 unit = "br/min",
                 status = 1,
                 timestamp = 1793059201000L

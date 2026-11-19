@@ -12,7 +12,7 @@ class VitalMapper: Mapper<Vital, VitalDto> {
         return VitalDto(
             id = e.id,
             userId = e.userId,
-            correlationId = e.correlationId,
+            windowId = e.windowId,
 
             observationType = e.observationType,
             value = e.value,
@@ -28,7 +28,7 @@ class VitalMapper: Mapper<Vital, VitalDto> {
          return Vital(
              id = d.id,
              userId = d.userId,
-             correlationId = d.correlationId,
+             windowId = d.windowId,
 
              observationType = d.observationType,
              value = d.value,

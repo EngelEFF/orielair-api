@@ -22,17 +22,17 @@ class Vital(
     var id: UUID? = null,
 
     @Column(nullable = true, columnDefinition = "TEXT")
-    var correlationId: String? = null,
+    var windowId: UUID? = null,
 
     @Column(nullable = false, columnDefinition = "TEXT")
-    var userId: String? = null,
+    var userId: UUID? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "TEXT")
     var observationType: ObservationType? = null,
 
     @Column(nullable = false)
-    var value: Int? = null,
+    var value: Double? = null,
 
     @Column(nullable = false, columnDefinition = "TEXT")
     var unit: String? = null,

@@ -14,7 +14,7 @@ import java.time.Instant
 
 data class RefinedObservation(
     val type: String,
-    val value: Int,
+    val value: Double,
     val unit: String,
     val status: Int,
     val timestamp: Long?
@@ -55,9 +55,9 @@ data class OrganizedObservationBatch(
 
 
 data class AccelerometerSample(
-    val x: Int,
-    val y: Int,
-    val z: Int,
+    val x: Double,
+    val y: Double,
+    val z: Double,
     val timestamp: Long
 )
 
@@ -267,7 +267,7 @@ class VitalIngestionOrchestrator(val physiologicalStateClassifier: Physiological
                                         add("Unrecognized IBI status: $status.")
                                 }
 
-                                if (value == 0) {
+                                if (value.toInt() == 0) {
                                     add("IBI interval value is zero.")
                                 }
                             }
@@ -433,7 +433,7 @@ accelerometerSamples = filteringResult.accepted.accelerometerSamples
 
                 Vital(
                     id = null,
-                    correlationId = null,
+                    windowId = processedBatch.metadata.bundleId,
                     userId = processedBatch.metadata.userId,
 
                     observationType = ObservationType.valueOf(observation.type),

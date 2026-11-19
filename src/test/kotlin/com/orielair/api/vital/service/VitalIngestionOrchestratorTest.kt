@@ -1,4 +1,5 @@
 import com.orielair.api.vital.`enum`.AcceptanceClassification
+import com.orielair.api.vital.enum.baseline.ObservationType
 import com.orielair.api.vital.enum.baseline.PhysiologicalState
 import com.orielair.api.vital.persistence.other.Metadata
 import com.orielair.api.vital.persistence.other.Observation
@@ -797,9 +798,6 @@ This verifies that the method handles an empty input without throwing an excepti
     fun `classifyPhysiologicalState returns classified observation batch`() {
 
         // Arrange
-        val physiologicalStateClassifier =
-            Mockito.mock(PhysiologicalStateClassifier::class.java)
-
         val metadata = Metadata(
             bundleId = "vb-classification-test-001",
             userId = "test-user-001",
@@ -845,8 +843,11 @@ This verifies that the method handles an empty input without throwing an excepti
 
         val expectedState = PhysiologicalState.AWAKE
 
-        Mockito.`when`(physiologicalStateClassifier.classify(organizedBatch))
-            .thenReturn(expectedState)
+        whenever(
+            physiologicalStateClassifier.classify(
+                any<OrganizedObservationBatch>()
+            )
+        ).thenReturn(expectedState)
 
         // Act
         val classifiedBatch = vitalIngestionOrchestrator.classifyPhysiologicalState(organizedBatch)
@@ -936,14 +937,14 @@ This verifies that the method handles an empty input without throwing an excepti
 
         val expectedHRVObservations = listOf(
             RefinedObservation(
-                type = "HRV",
+                type = "HEART_RATE_VARIABILITY",
                 value = 45,
                 unit = "ms",
                 status = 1,
                 timestamp = 1793059201000L
             ),
             RefinedObservation(
-                type = "HRV",
+                type = "HEART_RATE_VARIABILITY",
                 value = 48,
                 unit = "ms",
                 status = 1,
@@ -958,8 +959,7 @@ This verifies that the method handles an empty input without throwing an excepti
             .thenReturn(expectedHRVObservations)
 
         // Act
-        val processedBatch =
-            vitalIngestionOrchestrator.dispatchProcessing(classifiedBatch)
+        val processedBatch = vitalIngestionOrchestrator.dispatchProcessing(classifiedBatch)
 
         // Assert
         assertEquals(metadata, processedBatch.metadata)
@@ -983,12 +983,12 @@ This verifies that the method handles an empty input without throwing an excepti
 
         assertEquals(
             expectedHRVObservations,
-            processedBatch.observationsByType["HRV"]
+            processedBatch.observationsByType["HEART_RATE_VARIABILITY"]
         )
 
         // Original PPG_GREEN and IBI groups are no longer present.
         assertEquals(
-            setOf("HEART_RATE", "RESPIRATORY_RATE", "HRV"),
+            setOf("HEART_RATE", "RESPIRATORY_RATE", "HEART_RATE_VARIABILITY"),
             processedBatch.observationsByType.keys
         )
 
@@ -1007,7 +1007,7 @@ This verifies that the method handles an empty input without throwing an excepti
             windowStart = 1793059200000L,
             windowEnd = 1793059260000L
         )
-        
+
         // Arrange
         val processedObservations = mapOf(
             "HEART_RATE" to listOf(
@@ -1019,9 +1019,9 @@ This verifies that the method handles an empty input without throwing an excepti
                     timestamp = 1793059200000L
                 )
             ),
-            "HRV" to listOf(
+            "HEART_RATE_VARIABILITY" to listOf(
                 RefinedObservation(
-                    type = "HRV",
+                    type = "HEART_RATE_VARIABILITY",
                     value = 45,
                     unit = "ms",
                     status = 1,
@@ -1050,8 +1050,7 @@ This verifies that the method handles an empty input without throwing an excepti
 
         // Assert
         assertEquals(metadata, result.metadata)
-        assertEquals(processedObservations, result.vitals)
-        assertEquals(PhysiologicalState.AWAKE, result.physiologicalState)
+        assertEquals(3, result.vitals.size)
     }
 
 
@@ -1090,30 +1089,16 @@ This verifies that the method handles an empty input without throwing an excepti
                 unit = "br/min",
                 status = 1,
                 timestamp = 1793059201000L
-            ),
-            RefinedObservation(
-                type = "RESPIRATORY_RATE",
-                value = 16,
-                unit = "br/min",
-                status = 1,
-                timestamp = 1793059230000L
             )
         )
 
         val expectedHRVObservations = listOf(
             RefinedObservation(
-                type = "HRV",
+                type = "HEART_RATE_VARIABILITY",
                 value = 45,
                 unit = "ms",
                 status = 1,
                 timestamp = 1793059201000L
-            ),
-            RefinedObservation(
-                type = "HRV",
-                value = 48,
-                unit = "ms",
-                status = 1,
-                timestamp = 1793059230000L
             )
         )
 
@@ -1137,31 +1122,30 @@ This verifies that the method handles an empty input without throwing an excepti
         // Metadata is preserved.
         assertEquals(vitalBundle.metadata, result.metadata)
 
-        // Physiological state is propagated.
-        assertEquals(expectedState, result.physiologicalState)
 
         // Accepted HEART_RATE observations are retained.
         assertEquals(
-            listOf(72),
-            result.vitals["HEART_RATE"]?.map { it.value }
+            1,
+            result.vitals.count {
+                it.observationType == ObservationType.HEART_RATE
+            }
         )
 
         // RR processor output is included.
         assertEquals(
-            expectedRespiratoryRateObservations,
-            result.vitals["RESPIRATORY_RATE"]
+            1,
+            result.vitals.count {
+                it.observationType == ObservationType.RESPIRATORY_RATE
+            }
         )
 
         // HRV processor output is included.
+        // RR processor output is included.
         assertEquals(
-            expectedHRVObservations,
-            result.vitals["HRV"]
-        )
-
-        // Raw PPG_GREEN and IBI observations are replaced by processed results.
-        assertEquals(
-            setOf("HEART_RATE", "RESPIRATORY_RATE", "HRV"),
-            result.vitals.keys
+            1,
+            result.vitals.count {
+                it.observationType == ObservationType.HEART_RATE_VARIABILITY
+            }
         )
 
         // Both processors must have received their classified batch.

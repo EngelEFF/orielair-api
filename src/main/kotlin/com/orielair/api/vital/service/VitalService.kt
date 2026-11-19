@@ -3,6 +3,7 @@ import com.orielair.api.vital.persistence.entity.Vital
 import com.orielair.api.vital.persistence.repository.VitalRepository
 import com.orielair.api.shared.event.VitalRecorded
 import com.orielair.api.vital.persistence.entity.VitalHistory
+import com.orielair.api.vital.persistence.other.VitalBundle
 import com.orielair.api.vital.persistence.repository.VitalHistoryRepository
 import com.orielair.api.vital.service.baseline.BaselineIngestionService
 import com.orielair.api.vital.valueObject.baseline.BaselineObservation
@@ -18,10 +19,13 @@ import java.util.UUID
 class VitalService(
     private val vitalRepository: VitalRepository,
     private val vitalHistoryRepository: VitalHistoryRepository,
+    private val vitalIngestionOrchestrator: VitalIngestionOrchestrator
 ) {
 
-    fun store(vital: Vital): Vital {
-        return vitalRepository.save(vital)
+    fun store(vitalBundle: VitalBundle): List<Vital> {
+        val vitalIngestionResult = vitalIngestionOrchestrator.orchestrate(vitalBundle)
+        var savedVitals = vitalIngestionResult.vitals.map{ vitalRepository.save(it) }
+        return savedVitals
     }
 
     // This will be improved later now it is for testing the logic

@@ -12,13 +12,15 @@ class VitalMapper: Mapper<Vital, VitalDto> {
         return VitalDto(
             id = e.id,
             userId = e.userId,
-            heartRate = e.heartRate,
-            respiratoryRate = e.respiratoryRate,
-            heartRateVariability = e.heartRateVariability,
-            physiologicalState = e.physiologicalState,
             correlationId = e.correlationId,
+
+            observationType = e.observationType,
+            value = e.value,
+            unit = e.unit,
+            timestamp = e.timestamp,
+            physiologicalState = e.physiologicalState,
+
             ingestedAt = e.ingestedAt,
-            updatedAt = e.updatedAt,
         )
     }
 
@@ -26,13 +28,15 @@ class VitalMapper: Mapper<Vital, VitalDto> {
          return Vital(
              id = d.id,
              userId = d.userId,
-             heartRate = d.heartRate,
-             respiratoryRate = d.respiratoryRate,
-             heartRateVariability = d.heartRateVariability,
-             physiologicalState = d.physiologicalState,
              correlationId = d.correlationId,
+
+             observationType = d.observationType,
+             value = d.value,
+             unit = d.unit,
+             timestamp = d.timestamp,
+             physiologicalState = d.physiologicalState,
+
              ingestedAt = d.ingestedAt,
-             updatedAt = d.updatedAt,
          )
     }
 }

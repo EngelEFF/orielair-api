@@ -1,10 +1,14 @@
 package com.orielair.api.vital.service
 
 import com.orielair.api.vital.`enum`.AcceptanceClassification
+import com.orielair.api.vital.enum.baseline.ObservationType
 import com.orielair.api.vital.enum.baseline.PhysiologicalState
+import com.orielair.api.vital.persistence.entity.Vital
 import com.orielair.api.vital.persistence.other.Observation
 import com.orielair.api.vital.persistence.other.VitalBundle
 import com.orielair.api.vital.persistence.other.Metadata
+import org.springframework.stereotype.Component
+import java.time.Instant
 
 // Add imports for Observation and VitalBundle from their existing packages.
 
@@ -71,11 +75,10 @@ data class ProcessedObservationBatch(
 
 data class VitalIngestionResult(
     val metadata: Metadata,
-    val vitals: Map<String, List<RefinedObservation>>,
-    val physiologicalState: PhysiologicalState
+    val vitals: List<Vital>
 )
 
-
+@Component
 class VitalIngestionOrchestrator(val physiologicalStateClassifier: PhysiologicalStateClassifier,
                                 val rrProcessor: RRProcessor,
                                  val hrvProcessor: HRVProcessor
@@ -417,14 +420,36 @@ accelerometerSamples = filteringResult.accepted.accelerometerSamples
     }
 
 
+
     fun assembleProcessedBatch(
         processedBatch: ProcessedObservationBatch
     ): VitalIngestionResult {
 
+        val ingestedAt = Instant.now()
+
+        val vitals = processedBatch.observationsByType.values
+            .flatten()
+            .map { observation ->
+
+                Vital(
+                    id = null,
+                    correlationId = null,
+                    userId = processedBatch.metadata.userId,
+
+                    observationType = ObservationType.valueOf(observation.type),
+                    value = observation.value,
+                    unit = observation.unit,
+                    timestamp = observation.timestamp,
+
+                    physiologicalState = processedBatch.physiologicalState,
+
+                    ingestedAt = ingestedAt,
+                )
+            }
+
         return VitalIngestionResult(
             metadata = processedBatch.metadata,
-            vitals = processedBatch.observationsByType,
-            physiologicalState = processedBatch.physiologicalState
+            vitals = vitals
         )
     }
 }

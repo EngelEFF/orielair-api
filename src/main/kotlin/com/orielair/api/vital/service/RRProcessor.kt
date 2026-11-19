@@ -17,13 +17,6 @@ class RRProcessor {
                 unit = "br/min",
                 status = 1,
                 timestamp = 1793059201000L
-            ),
-            RefinedObservation(
-                type = "RESPIRATORY_RATE",
-                value = 16,
-                unit = "br/min",
-                status = 1,
-                timestamp = 1793059230000L
             )
         )
     }

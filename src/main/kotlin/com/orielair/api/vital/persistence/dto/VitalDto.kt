@@ -1,5 +1,8 @@
 package com.orielair.api.vital.persistence.dto
 
+import com.orielair.api.vital.enum.baseline.ObservationType
+import com.orielair.api.vital.enum.baseline.PhysiologicalState
+import jakarta.persistence.Column
 import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.UUID
@@ -8,11 +11,13 @@ import java.util.UUID
 data class VitalDto (
     var id : UUID? = null,
     var userId : String? = null,
-    var heartRate : String? = null,
-    var respiratoryRate: String? = null,
-    var heartRateVariability: String? = null,
-    var physiologicalState: String? = null,
     var correlationId: String? = null,
+
+    var observationType: ObservationType? = null,
+    var value: Int? = null,
+    var unit: String? = null,
+    var timestamp: Long? = null,
+
+    var physiologicalState: PhysiologicalState? = null,
     var ingestedAt: Instant? = null,
-    var updatedAt: Instant? = null
     )

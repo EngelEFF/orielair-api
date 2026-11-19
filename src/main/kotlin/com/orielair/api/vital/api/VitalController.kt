@@ -1,9 +1,12 @@
 package com.orielair.api.vital.api
 
 import com.orielair.api.shared.event.VitalRecorded
+import com.orielair.api.vital.mapper.implementation.VitalBundleMapper
 import com.orielair.api.vital.mapper.implementation.VitalMapper
+import com.orielair.api.vital.persistence.dto.VitalBundleDto
 import com.orielair.api.vital.persistence.dto.VitalDto
 import com.orielair.api.vital.persistence.entity.Vital
+import com.orielair.api.vital.persistence.other.VitalBundle
 import com.orielair.api.vital.service.VitalService
 import com.orielair.api.vital.valueObject.baseline.BaselineObservation
 import org.springframework.data.domain.Page
@@ -22,13 +25,15 @@ import java.util.UUID
 
 @RestController
 @RequestMapping("/vitals")
-class VitalController (val vitalService: VitalService, val vitalMapper: VitalMapper) {
+class VitalController (val vitalService: VitalService, val vitalMapper: VitalMapper,
+    var vitalBundleMapper: VitalBundleMapper) {
 
     @PostMapping
-    fun storeVital(@RequestBody dto: VitalDto):ResponseEntity<VitalDto> {
-        val vital = vitalMapper.mapFrom(dto)
-        val storedVitalDto = vitalMapper.mapTo(vitalService.store(vital))
-        return ResponseEntity(storedVitalDto, HttpStatus.CREATED)
+    fun storeVital(@RequestBody vitalBundleDto: VitalBundleDto):ResponseEntity<List<VitalDto>> {
+        val vitalBundle = vitalBundleMapper.mapFrom(vitalBundleDto)
+        val storedVitals = vitalService.store(vitalBundle)
+        val storedVitalsDto = storedVitals.map { vitalMapper.mapTo(it)}
+        return ResponseEntity(storedVitalsDto, HttpStatus.CREATED)
     }
 
     @GetMapping("/{id}")

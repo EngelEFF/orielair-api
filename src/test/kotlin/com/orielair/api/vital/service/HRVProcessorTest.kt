@@ -49,14 +49,14 @@ class HRVProcessorTest {
 
         val expectedObservations = listOf(
             RefinedObservation(
-                type = "HRV",
+                type = "HEART_RATE_VARIABILITY",
                 value = 45,
                 unit = "ms",
                 status = 1,
                 timestamp = 1793059201000L
             ),
             RefinedObservation(
-                type = "HRV",
+                type = "HEART_RATE_VARIABILITY",
                 value = 48,
                 unit = "ms",
                 status = 1,

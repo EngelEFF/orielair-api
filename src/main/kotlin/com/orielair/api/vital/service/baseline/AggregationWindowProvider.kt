@@ -9,7 +9,7 @@ import java.time.ZoneOffset
 
 @Service
 class AggregationWindowProvider(
-    private val windowHours: Long = 4
+    private val windowHours: Long = 1 // Original Value can be set to the appropriate hours later. It was once 4 hours. I'll change it to test the logic now.
 ) {
 
     init {

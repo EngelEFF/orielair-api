@@ -27,8 +27,8 @@ class BaselineAggregatorCheckpointScheduler(
      *
      * At the boundary, the window that just ended must be flushed.
      */
-    @Scheduled(cron = "0 0 */4 * * *", zone = "UTC")
-  //  @Scheduled(cron = "0 * * * * *", zone = "UTC")
+   // @Scheduled(cron = "0 0 */4 * * *", zone = "UTC")
+    @Scheduled(cron = "0 */5 * * * *", zone = "UTC")
     fun flushCompletedAggregationWindow() {
         // Determine the 4-hour window that has just completed.
         val completedWindow = windowProvider.currentWindow(Instant.now())

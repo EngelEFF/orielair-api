@@ -19,12 +19,29 @@ import java.util.UUID
 class VitalService(
     private val vitalRepository: VitalRepository,
     private val vitalHistoryRepository: VitalHistoryRepository,
-    private val vitalIngestionOrchestrator: VitalIngestionOrchestrator
+    private val vitalIngestionOrchestrator: VitalIngestionOrchestrator,
+    private val baselineIngestionService: BaselineIngestionService,
 ) {
 
     fun store(vitalBundle: VitalBundle): List<Vital> {
         val vitalIngestionResult = vitalIngestionOrchestrator.orchestrate(vitalBundle)
-        var savedVitals = vitalIngestionResult.vitals.map{ vitalRepository.save(it) }
+        val savedVitals = vitalIngestionResult.vitals.map{ vitalRepository.save(it) }
+
+        savedVitals.map{
+            val baselineObservation =  BaselineObservation(
+                userId = it.userId!!,
+                observationType = it.observationType!!,
+                physiologicalState = it.physiologicalState!!,
+                timestamp = it.timestamp.toString(),
+                value = it.value!!
+            )
+
+            // Ingest into baseline engine
+            baselineIngestionService.ingest(baselineObservation)
+
+            // Publishing can follow when ingestion is done or if we will wait and publish all at once too.
+        }
+
         return savedVitals
     }
 

@@ -24,23 +24,30 @@ class BaselineStatisticsScheduler(
      * The exact day/time is a policy decision.
      * This example runs every Monday at 00:00 UTC.
      */
-    @Scheduled(
+   /* @Scheduled(
         cron = "0 0 0 * * MON",
         zone = "UTC"
-    )
-   // @Scheduled(cron = "0 */2 * * * *", zone = "UTC")
+    )*/
+   @Scheduled(cron = "0 */15 * * * *", zone = "UTC")
     fun computeWeeklyBaselines() {
 
         val baselineEnd = Instant.now()
-        val baselineStart = baselineEnd.minusSeconds(
-            7 * 24 * 60 * 60
+//        val baselineStart = baselineEnd.minusSeconds(
+//            7 * 24 * 60 * 60
+//        )
+        val baselineStart = baselineEnd.minusSeconds( // I'm using this to test the logic resort to the old one of 7 days. You know this must match your defined aggregation window in the AggregationWindowProvider right 😂
+            60 * 60
         )
 
         val checkpoints =
             repository.findByWindowStartGreaterThanEqualAndWindowEndLessThanEqual(
-                start = Instant.parse("2026-09-05T00:00:00Z"),//baselineStart,
-                end = Instant.parse("2026-09-05T04:00:00Z")//baselineEnd
+                start =  baselineStart,//baselineStart,
+                end = baselineEnd//baselineEnd
             )
+//            repository.findByWindowStartGreaterThanEqualAndWindowEndLessThanEqual(
+//                start = Instant.parse("2026-11-20T08:00:00Z"),
+//                end = Instant.parse("2026-11-20T12:00:00Z")
+//            )
 
         /*
              * Merge checkpoint states and compute one baseline

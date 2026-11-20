@@ -1,5 +1,6 @@
 package com.orielair.api.analytics.service
 
+import com.orielair.api.vital.enum.baseline.ObservationType
 import com.orielair.api.vital.persistence.repository.VitalHistoryReaderRepository
 import com.orielair.api.vital.port.VitalHistoryRecord
 import org.springframework.data.domain.Page
@@ -17,8 +18,8 @@ class VitalAnalyticsService (val vitalHistoryReaderRepository: VitalHistoryReade
         return vitals
     }
 
-    fun readVitalHistory(userId: UUID, vitalType: String, from: Instant, to: Instant, pageable: Pageable): Page<VitalHistoryRecord> {
-        val vitals = vitalHistoryReaderRepository.readVitalHistory(userId, vitalType, from, to, pageable)
+    fun readVitalHistory(userId: UUID, observationType: ObservationType, from: Instant, to: Instant, pageable: Pageable): Page<VitalHistoryRecord> {
+        val vitals = vitalHistoryReaderRepository.readVitalHistory(userId, observationType, from, to, pageable)
         return vitals
     }
 

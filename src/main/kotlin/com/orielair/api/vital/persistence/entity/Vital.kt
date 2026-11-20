@@ -21,14 +21,14 @@ class Vital(
     @GeneratedValue(strategy = GenerationType.AUTO)
     var id: UUID? = null,
 
-    @Column(nullable = true, columnDefinition = "TEXT")
+    @Column(nullable = true)
     var windowId: UUID? = null,
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false)
     var userId: UUID? = null,
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false)
     var observationType: ObservationType? = null,
 
     @Column(nullable = false)

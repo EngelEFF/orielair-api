@@ -12,15 +12,18 @@ class VitalHistoryRecordMapper: Mapper<VitalHistoryRecord, VitalHistoryRecordDto
     override fun mapTo(e: VitalHistoryRecord): VitalHistoryRecordDto {
         return VitalHistoryRecordDto(
             id = e.id,
+            vitalId = e.vitalId,
             userId = e.userId,
-            vitalType = e.vitalType,
+            windowId = e.windowId,
+
             value = e.value,
+            observationType = e.observationType,
             unit = e.unit,
+            timestamp = e.timestamp,
             physiologicalState = e.physiologicalState,
-            sourceEventID = e.sourceEventID,
-            correlationId = e.correlationId,
+
             ingestedAt = e.ingestedAt,
-            updatedAt = e.updatedAt,
+
         )
     }
 }

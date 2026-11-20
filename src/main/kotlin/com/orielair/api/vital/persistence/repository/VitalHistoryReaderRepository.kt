@@ -1,5 +1,6 @@
 package com.orielair.api.vital.persistence.repository
 
+import com.orielair.api.vital.enum.baseline.ObservationType
 import com.orielair.api.vital.port.VitalHistoryReader
 import com.orielair.api.vital.port.VitalHistoryRecord
 import org.springframework.data.domain.Page
@@ -16,38 +17,42 @@ class VitalHistoryReaderRepository(
         val entities = vitalHistoryRepo.findAllByUserIdAndIngestedAtBetween(userId, from, to, pageable)
         return entities.map { VitalHistoryRecord(
             id = it.id,
+            vitalId = it.vitalId,
             userId = it.userId,
-            vitalType = it.vitalType,
+            windowId = it.windowId,
+
+            observationType = it.observationType,
             value = it.value,
             unit = it.unit,
+            timestamp = it.timestamp,
             physiologicalState = it.physiologicalState,
-            sourceEventID = it.sourceEventID,
-            correlationId = it.correlationId,
+
             ingestedAt = it.ingestedAt,
-            updatedAt = it.updatedAt,
         )
         }
     }
 
     override fun readVitalHistory(
         userId: UUID,
-        vitalType: String,
+        observationType: ObservationType,
         from: Instant,
         to: Instant,
         pageable: Pageable
     ): Page<VitalHistoryRecord> {
-        val entities = vitalHistoryRepo.findAllByUserIdAndVitalTypeAndIngestedAtBetween(userId, vitalType,from, to, pageable )
+        val entities = vitalHistoryRepo.findAllByUserIdAndObservationTypeAndIngestedAtBetween(userId, observationType, from, to, pageable )
         return entities.map { VitalHistoryRecord(
             id = it.id,
+            vitalId = it.vitalId,
             userId = it.userId,
-            vitalType = it.vitalType,
+            windowId = it.windowId,
+
+            observationType = it.observationType,
             value = it.value,
             unit = it.unit,
+            timestamp = it.timestamp,
             physiologicalState = it.physiologicalState,
-            sourceEventID = it.sourceEventID,
-            correlationId = it.correlationId,
+
             ingestedAt = it.ingestedAt,
-            updatedAt = it.updatedAt,
         )
         }
     }

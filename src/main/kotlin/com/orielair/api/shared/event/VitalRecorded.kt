@@ -1,17 +1,21 @@
 package com.orielair.api.shared.event
 
+import com.orielair.api.vital.enum.baseline.ObservationType
+import com.orielair.api.vital.enum.baseline.PhysiologicalState
 import java.time.Instant
 import java.util.UUID
 
 data class VitalRecorded (
     var id : UUID? = null,
-    var userId : String? = null,
-    var heartRate : String? = null,
-    var respiratoryRate: String? = null,
-    var heartRateVariability: String? = null,
-    var physiologicalState: String? = null,
-    var correlationId: String? = null,
+    var userId : UUID? = null,
+    var correlationId: UUID? = null,
+
+    var observationType: ObservationType? = null,
+    var value: Double? = null,
+    var unit: String? = null,
+    var timestamp: Long? = null,
+
+    var physiologicalState: PhysiologicalState? = null,
     var ingestedAt: Instant? = null,
-    var updatedAt: Instant? = null
 )
 

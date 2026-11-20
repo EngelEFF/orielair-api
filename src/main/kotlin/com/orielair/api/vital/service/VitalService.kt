@@ -21,32 +21,48 @@ class VitalService(
     private val vitalHistoryRepository: VitalHistoryRepository,
     private val vitalIngestionOrchestrator: VitalIngestionOrchestrator,
     private val baselineIngestionService: BaselineIngestionService,
+    private val streamBridge: StreamBridge
 ) {
 
     fun store(vitalBundle: VitalBundle): List<Vital> {
-        val vitalIngestionResult = vitalIngestionOrchestrator.orchestrate(vitalBundle)
-        val savedVitals = vitalIngestionResult.vitals.map{ vitalRepository.save(it) }
+        try {
+            val vitalIngestionResult = vitalIngestionOrchestrator.orchestrate(vitalBundle)
+            val savedVitals = vitalIngestionResult.vitals.map{ vitalRepository.save(it) }
 
-        savedVitals.map{
-            val baselineObservation =  BaselineObservation(
-                userId = it.userId!!,
-                observationType = it.observationType!!,
-                physiologicalState = it.physiologicalState!!,
-                timestamp = it.timestamp.toString(),
-                value = it.value!!
-            )
+            savedVitals.map{
+                // Ingest into baseline engine
+                ingestBaselineObservation(vital = it)
 
-            // Ingest into baseline engine
-            baselineIngestionService.ingest(baselineObservation)
+                // Publish it to Kafka
+                publish(vital = it)
 
-            // Publishing can follow when ingestion is done or if we will wait and publish all at once too.
+                // Stores the vitals as history
+                storeVitalHistory(vital = it)
+            }
+
+            return savedVitals
         }
-
-        return savedVitals
+        catch(e: Exception){
+            // Consider logging the error or throwing a domain-specific exception instead
+            throw RuntimeException("Failed to store and process vital bundle", e)
+        }
     }
 
     // This will be improved later now it is for testing the logic
-    fun storeVitalHistory(vitalHistory: VitalHistory): VitalHistory{
+    fun storeVitalHistory(vital: Vital): VitalHistory{
+        val vitalHistory = VitalHistory(
+            vitalId = vital.id,
+            userId = vital.userId,
+            windowId = vital.windowId,
+
+            value = vital.value,
+            unit = vital.unit,
+            observationType = vital.observationType,
+            timestamp = vital.timestamp,
+            physiologicalState = vital.physiologicalState,
+
+            ingestedAt = vital.ingestedAt,
+        )
         return vitalHistoryRepository.save(vitalHistory)
     }
 
@@ -56,5 +72,37 @@ class VitalService(
 
     fun readAll(pageable: Pageable): Page<Vital> {
         return vitalRepository.findAll(pageable)
+    }
+
+
+
+    //@Transactional
+    fun publish(vital: Vital){
+        val vitalRecorded = VitalRecorded(
+           id = vital.id,
+           userId = vital.userId,
+           correlationId = vital.windowId,
+
+           observationType = vital.observationType,
+           value = vital.value,
+           unit = vital.unit,
+           timestamp = vital.timestamp,
+           physiologicalState = vital.physiologicalState,
+
+           ingestedAt = vital.ingestedAt,
+        )
+        // Publish onto kafka using StreamBridge
+        streamBridge.send("vitalsRecorded-out-0", vitalRecorded)
+    }
+
+    fun ingestBaselineObservation(vital: Vital){
+        val baselineObservation = BaselineObservation(
+            userId = vital.userId!!,
+            observationType = vital.observationType!!,
+            physiologicalState = vital.physiologicalState!!,
+            timestamp = vital.timestamp.toString(),
+            value = vital.value!!
+        )
+        baselineIngestionService.ingest(baselineObservation)
     }
 }

@@ -3,6 +3,7 @@ package com.orielair.api.analytics.api
 import com.orielair.api.analytics.mapper.impl.VitalHistoryRecordMapper
 import com.orielair.api.analytics.persistence.dto.VitalHistoryRecordDto
 import com.orielair.api.analytics.service.VitalAnalyticsService
+import com.orielair.api.vital.enum.baseline.ObservationType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
@@ -40,13 +41,13 @@ class VitalAnalyticsController(val vitalHistoryRecordMapper: VitalHistoryRecordM
         @RequestParam(value = "page", defaultValue = "0") page: Int,
         @RequestParam(value = "page_size", defaultValue = "10") pageSize: Int,
         @RequestParam(value = "userId" ) userId: UUID,
-        @RequestParam(value = "vitalType" ) vitalType: String,
+        @RequestParam(value = "vitalType" ) vitalType: ObservationType,
         @RequestParam(value = "from" ) from: Instant,
         @RequestParam(value = "to") to: Instant
     ): ResponseEntity<Page<VitalHistoryRecordDto>>{
 
         val pageable = PageRequest.of(page, pageSize)
-        val vitalHistoriesPage = vitalAnalyticsService.readVitalsHistory(userId, from, to, pageable)
+        val vitalHistoriesPage = vitalAnalyticsService.readVitalHistory(userId, vitalType, from, to, pageable)
         val vitalHistoriesDto = vitalHistoriesPage.map { vitalHistoryRecordMapper.mapTo(it)}
         return ResponseEntity(vitalHistoriesDto, HttpStatus.OK)
     }

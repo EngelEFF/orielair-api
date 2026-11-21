@@ -1,6 +1,6 @@
 package com.orielair.api.vital.api
 
-import com.orielair.api.shared.event.VitalRecorded
+
 import com.orielair.api.vital.mapper.implementation.VitalBundleMapper
 import com.orielair.api.vital.mapper.implementation.VitalMapper
 import com.orielair.api.vital.persistence.dto.VitalBundleDto

@@ -6,7 +6,8 @@ import java.time.Instant
 import java.util.UUID
 
 data class VitalRecorded (
-    var id : UUID? = null,
+    var eventId: UUID? = null,
+    var vitalId : UUID? = null,
     var userId : UUID? = null,
     var correlationId: UUID? = null,
 

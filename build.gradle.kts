@@ -85,19 +85,24 @@ allOpen {
 	annotation("jakarta.persistence.Embeddable")
 }
 
-tasks.withType<Test> {
-	useJUnitPlatform()
-
-    // This warning occurs because libraries like MockK or Mockito use byte-buddy to modify code at runtime, which Java now requires you to explicitly allow.
-    jvmArgs("-XX:+EnableDynamicAgentLoading")
-    jvmArgs("-XX:+EnableDynamicAgentLoading", "-Xshare:off") // turns of the share warning during testing
-}
-
 // Specific to the baseline engine
 // This ensures the datasketch version is compatible with jdk 21
-tasks.withType<org.springframework.boot.gradle.tasks.run.BootRun> {
+// Application execution: covers BootRun and other JavaExec tasks
+tasks.withType<JavaExec>().configureEach {
     jvmArgs("--enable-preview")
 }
+
+// Test execution
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+
+    jvmArgs(
+        "--enable-preview",
+        "-XX:+EnableDynamicAgentLoading",
+        "-Xshare:off"
+    )
+}
+
 // Makes test outputs verbose
 tasks.test {
     testLogging {

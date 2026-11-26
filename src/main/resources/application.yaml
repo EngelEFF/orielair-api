@@ -27,7 +27,7 @@ spring:
   cloud:
     function:
       # Spring automatically finds these beans regardless of which package they live in!
-      definition: computeFeatures; generatePrediction; generateExplainability; generateRecommendation; dispatchAlert; captureVital; captureFeature; capturePrediction; captureExplainability; captureRecommendation; captureAlert;
+      definition: accumulateShortHorizonEvents; accumulateLongHorizonEvents; generatePrediction; generateExplainability; generateRecommendation; dispatchAlert; captureVital; captureFeature; capturePrediction; captureExplainability; captureRecommendation; captureAlert;
     stream:
       # Applies when Spring retries creating a failed binding.
       # Do not set this to 0 when the application should remain available:
@@ -44,15 +44,28 @@ spring:
             # Makes asynchronous send failures available on an error channel.
             error-channel-enabled: true
 
-        # Bind the INPUT parameter of computeFeatures to Kafka
-        computeFeatures-in-0:
+        # Bind the INPUT parameter of accumulateShortHorizonEvents to Kafka.
+        # Receives vital records independently through the short-horizon consumer group.
+        # Batch mode delivers records from each Kafka poll as a List.
+        accumulateShortHorizonEvents-in-0:
           destination: vital-recorded
-          group: features-group
+          group: features-short-horizon-group
+          consumer:
+            batch-mode: true
+
+        # Bind the INPUT parameter of accumulateLongHorizonEvents to Kafka.
+        # Receives vital records independently through the long-horizon consumer group.
+        # Batch mode delivers records from each Kafka poll as a List.
+        accumulateLongHorizonEvents-in-0:
+          destination: vital-recorded
+          group: features-long-horizon-group
+          consumer:
+            batch-mode: true
 
         # Bind the OUTPUT return value of computeFeatures to Kafka
-        computeFeatures-out-0:
-          destination: feature-computed
-          content-type: application/json
+        #computeFeatures-out-0:
+        #  destination: feature-computed
+        #  content-type: application/json
 
         # Bind the INPUT parameter of generatePrediction to Kafka
         generatePrediction-in-0:

@@ -208,59 +208,6 @@ class VitalEventAccumulator {
             longHorizonLock
         )
 
-//    /**
-//     * Groups the records in an incoming delivery by userId
-//     * and appends one ReceivedBatch per user to the appropriate
-//     * horizon-specific FIFO queues.
-//     *
-//     * All user-specific batches created from the same incoming
-//     * message share one batchDeliveryId.
-//     *
-//     * Each invocation uses its horizon-specific collection
-//     * and lock. This protects concurrent mutations within
-//     * that horizon without blocking the other horizon.
-//     */
-//    private fun accumulate(
-//        message: Message<List<VitalRecorded>>,
-//        container: MutableMap<String, ArrayDeque<ReceivedBatch>>,
-//        lock: Any
-//    ): List<UserBatchAccumulationStatus> {
-//
-//        val userBatchRecords = extractUserBatchRecords(message)
-//
-//        if (userBatchRecords.isEmpty()) {
-//            return emptyList()
-//        }
-//
-//        val batchDeliveryId = UUID.randomUUID()
-//
-//        return synchronized(lock) {
-//
-//            userBatchRecords.map { (userId, records) ->
-//
-//                val userBatches = container.getOrPut(userId) {
-//                    ArrayDeque()
-//                }
-//
-//                val receivedBatch = ReceivedBatch(
-//                    batchDeliveryId = batchDeliveryId,
-//                    records = records
-//                )
-//
-//                userBatches.addLast(receivedBatch)
-//
-//                UserBatchAccumulationStatus(
-//                    userId = userId,
-//                    batchDeliveryId = batchDeliveryId,
-//                    receivedRecordCount = records.size,
-//                    pendingBatchCount = userBatches.size,
-//                    pendingRecordCount = userBatches.sumOf {
-//                        it.records.size
-//                    }
-//                )
-//            }
-//        }
-//    }
 
     /**
      * Groups the records in an incoming delivery by userId

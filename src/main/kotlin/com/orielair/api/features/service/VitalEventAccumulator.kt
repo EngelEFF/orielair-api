@@ -1,13 +1,17 @@
+
 package com.orielair.api.features.service
 
-
+import com.orielair.api.features.enum.PredictionHorizon
 import com.orielair.api.shared.event.VitalRecorded
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.messaging.Message
 import org.springframework.stereotype.Service
 import java.util.ArrayDeque
 import java.util.UUID
 
+// Add the import for PredictionHorizon from its existing package.
+// Its enum values are SHORT and LONG.
 
 /**
  * Associates a vital event with its original Kafka offset.
@@ -17,7 +21,6 @@ data class ReceivedRecord(
     val vital: VitalRecorded,
     val offset: Long
 )
-
 
 /**
  * Reports the accumulation result for a user's batch
@@ -43,26 +46,16 @@ data class ReceivedBatch(
     val records: List<VitalRecorded>
 )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Announces that a user's batch has been accumulated
+ * and is available for evaluation by FeatureService.
+ */
+data class VitalBatchAccumulatedEvent(
+    val userId: String,
+    val batchDeliveryId: UUID,
+    val predictionHorizon: PredictionHorizon,
+    val receivedRecordCount: Int
+)
 
 /**
  * Maintains independent FIFO queues of received batches
@@ -75,11 +68,14 @@ data class ReceivedBatch(
  * The two prediction horizons maintain independent collections.
  */
 @Service
-class VitalEventAccumulator {
+class VitalEventAccumulator(
+    private val eventPublisher: ApplicationEventPublisher
+) {
 
     private companion object {
         val logger = LoggerFactory.getLogger(VitalEventAccumulator::class.java)
     }
+
     // Independent FIFO containers for each prediction horizon.
     // Each container maintains a separate queue for every user.
     private val shortHorizonBatches =
@@ -104,7 +100,7 @@ class VitalEventAccumulator {
             message,
             shortHorizonBatches,
             shortHorizonLock,
-            "SHORT-HORIZON"
+            PredictionHorizon.SHORT
         )
 
     /**
@@ -117,7 +113,7 @@ class VitalEventAccumulator {
             message,
             longHorizonBatches,
             longHorizonLock,
-            "LONG-HORIZON"
+            PredictionHorizon.LONG
         )
 
     /**
@@ -223,12 +219,15 @@ class VitalEventAccumulator {
      *
      * Logs the accumulation result and pending queue statistics
      * for the corresponding prediction horizon.
+     *
+     * Publishes one VitalBatchAccumulatedEvent per user batch
+     * after accumulation and outside the synchronized block.
      */
     private fun accumulate(
         message: Message<List<VitalRecorded>>,
         container: MutableMap<String, ArrayDeque<ReceivedBatch>>,
         lock: Any,
-        horizon: String
+        predictionHorizon: PredictionHorizon
     ): List<UserBatchAccumulationStatus> {
 
         val userBatchRecords = extractUserBatchRecords(message)
@@ -236,7 +235,7 @@ class VitalEventAccumulator {
         if (userBatchRecords.isEmpty()) {
             logger.debug(
                 "📭 [{}] Received an empty Kafka delivery. Nothing to accumulate.",
-                horizon
+                predictionHorizon
             )
             return emptyList()
         }
@@ -284,10 +283,10 @@ class VitalEventAccumulator {
         }
 
         logger.info(
-            "📥 [{}] Delivery accumulated successfully | " +
+            "📥 [{} HORIZON] Delivery accumulated successfully | " +
                     "deliveryId={} | records={} | users={} | " +
                     "pendingBatches={} | pendingRecords={}",
-            horizon,
+            predictionHorizon,
             batchDeliveryId,
             receivedRecordCount,
             statuses.size,
@@ -299,9 +298,9 @@ class VitalEventAccumulator {
         statuses.forEach { status ->
 
             logger.debug(
-                "👤 [{}] User accumulated | userId={} | " +
+                "👤 [{} HORIZON] User accumulated | userId={} | " +
                         "receivedRecords={} | pendingBatches={} | pendingRecords={}",
-                horizon,
+                predictionHorizon,
                 status.userId,
                 status.receivedRecordCount,
                 status.pendingBatchCount,
@@ -309,8 +308,23 @@ class VitalEventAccumulator {
             )
         }
 
+        // Publish one notification for each accumulated user batch.
+        // Publishing outside the synchronized block prevents event listeners
+        // from holding the accumulator's collection lock.
+        statuses.forEach { status ->
+            eventPublisher.publishEvent(
+                VitalBatchAccumulatedEvent(
+                    userId = status.userId,
+                    batchDeliveryId = status.batchDeliveryId,
+                    predictionHorizon = predictionHorizon,
+                    receivedRecordCount = status.receivedRecordCount
+                )
+            )
+        }
+
         return statuses
     }
+
     /**
      * Groups the incoming vital records by userId.
      *
@@ -405,6 +419,7 @@ class VitalEventAccumulator {
             if (userBatches.isEmpty()) {
                 container.remove(userId)
             }
+
             removedBatch
         }
 }

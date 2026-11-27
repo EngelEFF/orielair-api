@@ -198,23 +198,33 @@ spring:
               # Slightly longer than delivery.timeout.ms so the real Kafka
               # failure can propagate instead of Spring timing out first.
               send-timeout-expression: "6000"
-
               close-timeout: 5
 
           accumulateShortHorizonEvents-in-0:
             consumer:
               configuration:
                 "fetch.min.bytes": 7000
-                "fetch.max.wait.ms": 120000
+                "fetch.max.wait.ms": ${ORIELAIR_FEATURES_SHORT_DURATION}
                 "max.poll.records": 10
 
           accumulateLongHorizonEvents-in-0:
             consumer:
               configuration:
                 "fetch.min.bytes": 16000
-                "fetch.max.wait.ms": 300000
+                "fetch.max.wait.ms": ${ORIELAIR_FEATURES_LONG_DURATION}
                 "max.poll.records": 50
 
+# Oriel Air application-specific feature configuration
+orielair:
+  features:
+    horizons:
+      short:
+        minimum-record-count: ${ORIELAIR_FEATURES_SHORT_MINIMUM_RECORD_COUNT}
+        duration: ${ORIELAIR_FEATURES_SHORT_DURATION}
+
+      long:
+        minimum-record-count: ${ORIELAIR_FEATURES_LONG_MINIMUM_RECORD_COUNT}
+        duration: ${ORIELAIR_FEATURES_LONG_DURATION}
 
 server:
   port: ${ORIELAIR_SPRING_SERVER_PORT:8082}
